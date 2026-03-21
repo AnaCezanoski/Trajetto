@@ -1,10 +1,10 @@
-package com.trajetto;
+package com.trajetto.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class TrajettoApplicationTests {
+class BackendApplicationTests {
 
 	@Test
 	void contextLoads() {
