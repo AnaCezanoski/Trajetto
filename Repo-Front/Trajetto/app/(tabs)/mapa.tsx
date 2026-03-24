@@ -35,18 +35,20 @@ const Mapa = () => {
         getLocation();
     }, [])
 
+    const defaultRegion = {
+        latitude: -14.2350,
+        longitude: -51.9253,
+        latitudeDelta: 10,
+        longitudeDelta: 10,
+    };
+
 
     return (
         <View style={styles.container}>
             <MapView
                 style={styles.map}
                 region={
-                    region ?? {
-                        latitude: -14.2350,
-                        longitude: -51.9253,
-                        latitudeDelta: 10,
-                        longitudeDelta: 10,
-                    }
+                    region ?? defaultRegion
                 }
             />
         </View>
