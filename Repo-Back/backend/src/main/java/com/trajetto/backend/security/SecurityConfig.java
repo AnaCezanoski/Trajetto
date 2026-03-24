@@ -68,7 +68,6 @@ public class SecurityConfig {
                         .requestMatchers(mvc.pattern(HttpMethod.PATCH, "/user/{id}")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern(HttpMethod.PUT, "/user/{id}")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern(HttpMethod.PUT, "/user/*/role")).hasRole("ADMIN")
-                                .requestMatchers("/route").permitAll()
                         .anyRequest().authenticated()
                         )
                 .exceptionHandling(ex -> ex
