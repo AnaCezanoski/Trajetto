@@ -1,7 +1,9 @@
 import { View, StyleSheet } from 'react-native';
-import MapView from 'react-native-maps';
+import MapView, {Polyline} from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
+import { RouteService } from '@/services/routeService';
+import polyline from '@mapbox/polyline';
 
 type Region = {
     latitude: number;
@@ -12,6 +14,7 @@ type Region = {
 
 const Mapa = () => {
     const [region, setRegion] = useState<Region | null>(null);
+    const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
 
     useEffect(() => {
         const getLocation = async () => {
@@ -24,12 +27,18 @@ const Mapa = () => {
 
             let location = await Location.getCurrentPositionAsync({});
 
-            setRegion({
+            const newRegion = {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
-            });
+            };
+
+            setRegion(newRegion);
+            console.log('pegou location');
+
+            await fecthRoute(newRegion);
+
         }
 
         getLocation();
@@ -42,6 +51,39 @@ const Mapa = () => {
         longitudeDelta: 10,
     };
 
+    const fecthRoute = async (region: Region) => {
+        if (!region) return;
+
+        try {
+            const data = await RouteService.getRoute(
+                {
+                    lat: region.latitude,
+                    lng: region.longitude,
+                },
+                {
+                    lat: -25.4300,
+                    lng: -49.2700,
+                }
+            )
+
+            const decoded = polyline.decode(data.geometry);
+
+            const coords = decoded.map(([lat, lng]: number[]) => ({
+                latitude: lat,
+                longitude: lng,
+            }));
+
+            setRouteCoords(coords);
+        } catch (error) {
+            console.log(error);
+        }
+
+    }
+
+    useEffect(()=>{
+        console.log('routeCoords: ',routeCoords);
+    }, [routeCoords])
+
 
     return (
         <View style={styles.container}>
@@ -50,7 +92,16 @@ const Mapa = () => {
                 region={
                     region ?? defaultRegion
                 }
-            />
+            >
+                {routeCoords.length > 0 && (
+                    <Polyline
+                        coordinates={routeCoords}
+                        strokeWidth={4}
+                    />
+                )}
+
+
+            </MapView>
         </View>
     );
 }
