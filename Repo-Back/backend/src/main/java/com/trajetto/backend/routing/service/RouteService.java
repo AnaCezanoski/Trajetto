@@ -21,7 +21,7 @@ public class RouteService {
 
     public Map<String, Object> getRoute(RouteRequestDTO request) {
         RestTemplate restTemplate = new RestTemplate();
-        String url = "https://api.openrouteservice.org/v2/directions/foot-walking";
+        String url = "https://api.openrouteservice.org/v2/directions/driving-car";
 
         List<List<Double>> coordinates =  new ArrayList<>();
 
