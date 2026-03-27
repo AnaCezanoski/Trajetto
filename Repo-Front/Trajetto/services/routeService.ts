@@ -1,11 +1,13 @@
 import { api } from './api';
 
+type Route = {
+    origin: any,
+    destination: any,
+    waypoints?: any[],
+}
 export class RouteService {
-    static async getRoute(origin: any, destination: any) {
-        const response = await api.post('/route', {
-            origin,
-            destination,
-        })
+    static async getRoute(route: Route) {
+        const response = await api.post('/route', route)
 
         return response.data;
     }

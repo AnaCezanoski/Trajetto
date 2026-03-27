@@ -36,12 +36,14 @@ public class RouteService {
         coordinates.add(List.of(request.destination.lng, request.destination.lat));
 
         Map<String, Object> body = new HashMap<>();
+        System.out.println("BODY: " + body);
 
         body.put("coordinates", coordinates);
-
+        System.out.println("ANTES DO ORS");
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        System.out.println("DEPOIS DO ORS");
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
