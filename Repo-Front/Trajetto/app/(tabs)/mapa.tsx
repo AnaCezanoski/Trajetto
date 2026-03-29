@@ -21,7 +21,7 @@ const Mapa = () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
 
             if (status !== 'granted') {
-                console.log('Permissão de localização negada');
+                console.log('Location permission denied.');
                 return;
             }
 
@@ -35,7 +35,7 @@ const Mapa = () => {
             };
 
             setRegion(newRegion);
-            console.log('pegou location');
+            console.log('got location');
 
             await fecthRoute(newRegion);
 
