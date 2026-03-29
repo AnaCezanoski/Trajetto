@@ -1,98 +1,113 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Olá, {user?.firstName} 👋</Text>
+          <Text style={styles.subtitle}>Pronto para explorar?</Text>
+        </View>
+        <TouchableOpacity onPress={logout}>
+          <Text style={styles.logout}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Card principal */}
+      <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>✈️ Teste de Perfil</Text>
+          <Text style={styles.heroText}>
+            Descubra seu perfil de viajante e gere roteiros personalizados.
+          </Text>
+          <TouchableOpacity style={styles.heroButton}>
+            <Text style={styles.heroButtonText}>Começar agora</Text>
+          </TouchableOpacity>
+        </View>
+
+      <View style={styles.heroCard}>
+        <Text style={styles.heroTitle}>🗺️ Gerar Roteiro</Text>
+        <Text style={styles.heroText}>
+          Descubra destinos personalizados com base no seu perfil de viajante.
+        </Text>
+        <TouchableOpacity style={styles.heroButton}>
+          <Text style={styles.heroButtonText}>Realizar teste</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Card lista de usuários — só mostra se for admin */}
+      {user?.isAdmin && (
+        <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>👩‍👦 Lista de Usuários</Text>
+          <Text style={styles.heroText}>
+            Gerencie usuários cadastrados no Trajetto.
+          </Text>
+          <TouchableOpacity
+            style={styles.heroButton}
+            onPress={() => router.push('/UserListScreen')}> {/* ✅ corrigido */}
+            <Text style={styles.heroButtonText}>Ver</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Ações rápidas */}
+      <Text style={styles.sectionTitle}>Acesso rápido</Text>
+      <View style={styles.quickActions}>
+        <TouchableOpacity style={styles.actionCard}
+          onPress={() => router.push('/(tabs)/mapa')}>
+          <Text style={styles.actionIcon}>🗺️</Text>
+          <Text style={styles.actionLabel}>Mapa</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionCard}
+          onPress={() => router.push('/ProfileScreen')}>
+          <Text style={styles.actionIcon}>👤</Text>
+          <Text style={styles.actionLabel}>Perfil</Text>
+        </TouchableOpacity>
+      </View>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  content: { padding: 24, paddingTop: 60 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 24,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  greeting: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
+  subtitle: { fontSize: 14, color: '#666', marginTop: 2 },
+  logout: { color: '#EF4444', fontWeight: 'bold' },
+  heroCard: {
+    backgroundColor: '#4F46E5', borderRadius: 16,
+    padding: 24, marginBottom: 32,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  heroTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
+  heroText: { fontSize: 14, color: '#c7d2fe', marginBottom: 20, lineHeight: 20 },
+  heroButton: {
+    backgroundColor: '#fff', borderRadius: 8,
+    padding: 12, alignItems: 'center',
   },
+  heroButtonText: { color: '#4F46E5', fontWeight: 'bold', fontSize: 15 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 12 },
+  quickActions: { flexDirection: 'row', gap: 12 },
+  actionCard: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 12,
+    padding: 20, alignItems: 'center', gap: 8,
+    shadowColor: '#000', shadowOpacity: 0.05,
+    shadowRadius: 4, elevation: 2,
+  },
+  actionIcon: { fontSize: 28 },
+  actionLabel: { fontSize: 13, fontWeight: '600', color: '#444' },
 });
