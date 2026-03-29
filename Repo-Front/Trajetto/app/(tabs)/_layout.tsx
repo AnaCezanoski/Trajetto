@@ -11,11 +11,13 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName="index" // ← garante que começa na home
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
+
       <Tabs.Screen
         name="index"
         options={{
@@ -23,6 +25,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="mapa"
         options={{
