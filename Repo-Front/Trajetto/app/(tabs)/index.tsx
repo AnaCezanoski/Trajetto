@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import { Image } from 'react-native';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
@@ -16,64 +17,55 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Olá, {user?.firstName} 👋</Text>
-          <Text style={styles.subtitle}>Pronto para explorar?</Text>
+          <Text style={styles.greeting}>Hello, {user?.firstName}</Text>
+          <Text style={styles.subtitle}>Ready to explore?</Text>
         </View>
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.logout}>Sair</Text>
+        <TouchableOpacity onPress={() => router.push('/ProfileScreen')}>
+          <Text style={styles.actionIcon}>👤</Text>
         </TouchableOpacity>
       </View>
+
+     {/* Card lista de usuários — só mostra se for admin */}
+     {user?.isAdmin && (
+       <View style={styles.heroCard}>
+         <Text style={styles.heroTitle}>Registered Users</Text>
+         <Text style={styles.heroText}>
+           Manage registered users in Trajetto.
+         </Text>
+         <TouchableOpacity
+           style={styles.heroButton}
+           onPress={() => router.push('/UserListScreen')}>
+           <Text style={styles.heroButtonText}>View Users</Text>
+         </TouchableOpacity>
+       </View>
+     )}
 
       {/* Card principal */}
       <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>✈️ Teste de Perfil</Text>
+          <Text style={styles.heroTitle}>Traveler Profile Test</Text>
           <Text style={styles.heroText}>
-            Descubra seu perfil de viajante e gere roteiros personalizados.
+            Discover your traveler profile and create personalized itineraries.
           </Text>
           <TouchableOpacity style={styles.heroButton}>
-            <Text style={styles.heroButtonText}>Começar agora</Text>
+            <Text style={styles.heroButtonText}>Start Now</Text>
           </TouchableOpacity>
         </View>
 
       <View style={styles.heroCard}>
-        <Text style={styles.heroTitle}>🗺️ Gerar Roteiro</Text>
+        <Text style={styles.heroTitle}>Generate Travel Itinerary</Text>
         <Text style={styles.heroText}>
-          Descubra destinos personalizados com base no seu perfil de viajante.
+          Discover personalized destinations based on your traveler profile.
         </Text>
         <TouchableOpacity style={styles.heroButton}>
-          <Text style={styles.heroButtonText}>Realizar teste</Text>
+          <Text style={styles.heroButtonText}>Start Now</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Card lista de usuários — só mostra se for admin */}
-      {user?.isAdmin && (
-        <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>👩‍👦 Lista de Usuários</Text>
-          <Text style={styles.heroText}>
-            Gerencie usuários cadastrados no Trajetto.
-          </Text>
-          <TouchableOpacity
-            style={styles.heroButton}
-            onPress={() => router.push('/UserListScreen')}> {/* ✅ corrigido */}
-            <Text style={styles.heroButtonText}>Ver</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Ações rápidas */}
-      <Text style={styles.sectionTitle}>Acesso rápido</Text>
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.actionCard}
-          onPress={() => router.push('/(tabs)/mapa')}>
-          <Text style={styles.actionIcon}>🗺️</Text>
-          <Text style={styles.actionLabel}>Mapa</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionCard}
-          onPress={() => router.push('/ProfileScreen')}>
-          <Text style={styles.actionIcon}>👤</Text>
-          <Text style={styles.actionLabel}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      <Image
+        source={require('../../assets/images/home-banner.png')}
+        style={styles.banner}
+        resizeMode="contain"
+      />
 
     </ScrollView>
   );
@@ -90,7 +82,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#666', marginTop: 2 },
   logout: { color: '#EF4444', fontWeight: 'bold' },
   heroCard: {
-    backgroundColor: '#4F46E5', borderRadius: 16,
+    backgroundColor: '#023665', borderRadius: 16,
     padding: 24, marginBottom: 32,
   },
   heroTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
@@ -99,7 +91,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 8,
     padding: 12, alignItems: 'center',
   },
-  heroButtonText: { color: '#4F46E5', fontWeight: 'bold', fontSize: 15 },
+  heroButtonText: { color: '#023665', fontWeight: 'bold', fontSize: 15 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 12 },
   quickActions: { flexDirection: 'row', gap: 12 },
   actionCard: {
@@ -110,4 +102,11 @@ const styles = StyleSheet.create({
   },
   actionIcon: { fontSize: 28 },
   actionLabel: { fontSize: 13, fontWeight: '600', color: '#444' },
+
+  banner: {
+    width: 600,
+    height: 300,
+    resizeMode: 'contain',
+    alignSelf: 'center'
+  },
 });

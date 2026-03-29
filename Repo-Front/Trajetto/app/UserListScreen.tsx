@@ -14,14 +14,14 @@ export default function UserListScreen() {
   const fetchUsers = async () => {
     try {
       const res = await api.get('/user');
+      console.log('FIRST USER:', JSON.stringify(res.data[0]));
       setUsers(res.data);
     } catch (error: any) {
-      console.log('ERRO:', error.message);
-      Alert.alert('Erro', 'Não foi possível carregar os usuários');
+      console.log('ERROR:', error.message);
+      Alert.alert('Error', 'Unable to load users');
     }
   };
 
-  // Recarrega a lista toda vez que a tela recebe foco
   useFocusEffect(
     useCallback(() => {
       fetchUsers();
@@ -29,9 +29,9 @@ export default function UserListScreen() {
   );
 
   const deleteUser = (id: number) => {
-    Alert.alert('Confirmar', 'Confirmar exclusão de usuário?', [
-      { text: 'Cancelar' },
-      { text: 'Excluir', style: 'destructive', onPress: async () => {
+    Alert.alert('Confirm', 'Confirm user deletion?', [
+      { text: 'Cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
         await api.delete(`/user/${id}`);
         fetchUsers();
       }},
@@ -40,12 +40,12 @@ export default function UserListScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-        <Text style={styles.logoutText}>Sair</Text>
-      </TouchableOpacity>
+       <Text style={styles.title}>Users</Text>
       <FlatList
         data={users}
-        keyExtractor={(item) => String(item.code)}
+        keyExtractor={(item, index) =>
+          item.code !== undefined ? String(item.code) : String(index)
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View>
@@ -59,10 +59,10 @@ export default function UserListScreen() {
                 pathname: '/UserDetailScreen',
                 params: { user: JSON.stringify(item) }
               })}>
-                <Text style={styles.editBtn}>Editar</Text>
+                <Text style={styles.editBtn}>Edit</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteUser(item.code)}>
-                <Text style={styles.deleteBtn}>Excluir</Text>
+              <TouchableOpacity onPress={() => deleteUser(item.id)}>
+                <Text style={styles.deleteBtn}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -73,9 +73,8 @@ export default function UserListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-  logoutBtn: { alignSelf: 'flex-end', marginBottom: 12 },
-  logoutText: { color: '#EF4444', fontWeight: 'bold' },
+  container: { flex: 1, padding: 16, backgroundColor: '#B6A79A' },
+  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 24, color: '#023665' },
   card: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 10,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   name: { fontWeight: 'bold', fontSize: 16 },
