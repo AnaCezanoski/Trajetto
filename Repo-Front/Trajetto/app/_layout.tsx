@@ -40,9 +40,9 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="LoginScreen" options={{ headerShown: false }} />
-        <Stack.Screen name="RegisterScreen" options={{ title: 'Criar Conta' }} />
-        <Stack.Screen name="UserListScreen" options={{ title: 'Usuários' }} />
-        <Stack.Screen name="UserDetailScreen" options={{ title: 'Editar Usuário' }} />
+        <Stack.Screen name="RegisterScreen" options={{ title: 'Create Account' }} />
+        <Stack.Screen name="UserListScreen" options={{ title: 'Users' }} />
+        <Stack.Screen name="UserDetailScreen" options={{ title: 'Edit User' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
