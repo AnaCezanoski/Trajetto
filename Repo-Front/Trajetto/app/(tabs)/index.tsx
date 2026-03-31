@@ -46,7 +46,7 @@ export default function HomeScreen() {
           <Text style={styles.heroText}>
             Discover your traveler profile and create personalized itineraries.
           </Text>
-          <TouchableOpacity style={styles.heroButton}>
+          <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
             <Text style={styles.heroButtonText}>Start Now</Text>
           </TouchableOpacity>
         </View>
