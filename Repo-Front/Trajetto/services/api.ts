@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-//const ip = '192.168.100.236'; // IP do seu PC
-const ip = '192.168.100.236'; // IP do seu PC
+const ip = '172.20.10.5'; // IP do seu PC
 
 export const api = axios.create({
     // Usar o IP do seu PC aqui (o celular nao roda no localhost com o backend)
