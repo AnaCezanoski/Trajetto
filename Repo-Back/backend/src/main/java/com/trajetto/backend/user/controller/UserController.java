@@ -179,6 +179,16 @@ public class UserController {
         }
     }
 
+    @SecurityRequirement(name = "AuthServer")
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@AuthenticationPrincipal UserToken userToken) {
+        if (userToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated user");
+        }
+        logger.info("User {} logged out", userToken.getId());
+        return ResponseEntity.ok().body("Logout successful");
+    }
+
 //    @SecurityRequirement(name = "AuthServer")
 //    @PostMapping("/me/picture")
 //    public ResponseEntity<UserResponseDTO> uploadProfilePicture(

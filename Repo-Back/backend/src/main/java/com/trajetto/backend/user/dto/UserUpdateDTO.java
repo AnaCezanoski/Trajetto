@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public class UserUpdateDTO {
     private String firstName;
     private String lastName;
+    private String travelerProfile;
     private String telephone;
     private String country;
     private String email;
