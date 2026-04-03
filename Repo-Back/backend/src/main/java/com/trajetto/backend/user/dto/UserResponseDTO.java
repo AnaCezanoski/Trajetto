@@ -12,6 +12,7 @@ public class UserResponseDTO {
     private Long id;
     private String firstName;
     private String lastName;
+    private String travelerProfile;
     private LocalDate birthDate;
     private String telephone;
     private String email;

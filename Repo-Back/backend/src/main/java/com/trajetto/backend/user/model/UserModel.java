@@ -34,6 +34,9 @@ public class UserModel {
     @Column(name = "isAdmin")
     private Boolean isAdmin;
 
+    @Column(name = "travelerProfile")
+    private String travelerProfile;
+
     @Column(name = "birthDate")
     private LocalDate birthDate;
 

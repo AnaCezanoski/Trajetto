@@ -67,6 +67,7 @@ public class DefaultUserService implements UserService {
                 .map(existingUser -> {
                     existingUser.setFirstName(userModel.getFirstName());
                     existingUser.setLastName(userModel.getLastName());
+                    existingUser.setTravelerProfile(userModel.getTravelerProfile());
                     existingUser.setTelephone(userModel.getTelephone());
                     existingUser.setEmail(userModel.getEmail());
                     existingUser.setCountry(userModel.getCountry());

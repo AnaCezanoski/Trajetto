@@ -7,6 +7,7 @@ public record UserResponse(
         String firstName,
         String lastName,
         String email,
+        String travelerProfile,
         boolean isAdmin
 //        String profilePicture
 ) {
@@ -16,6 +17,7 @@ public record UserResponse(
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.getTravelerProfile(),
                 user.getIsAdmin()
 //                user.getProfilePictureUrl() != null && !user.getProfilePictureUrl().isEmpty() ?
 //                        "data:image/jpeg;base64," + user.getProfilePictureUrl() : null

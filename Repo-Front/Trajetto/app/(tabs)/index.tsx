@@ -63,13 +63,6 @@ export default function HomeScreen() {
           <Text style={styles.heroButtonText}>Start Now</Text>
         </TouchableOpacity>
       </View>
-
-      <Image
-        source={require('../../assets/images/home-banner.png')}
-        style={styles.banner}
-        resizeMode="contain"
-      />
-
     </ScrollView>
   );
 }

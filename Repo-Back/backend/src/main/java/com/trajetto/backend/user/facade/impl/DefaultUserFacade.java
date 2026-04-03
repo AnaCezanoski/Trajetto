@@ -46,6 +46,7 @@ public class DefaultUserFacade implements UserFacade {
 
         target.setFirstName(source.getFirstName());
         target.setLastName(source.getLastName());
+        target.setTravelerProfile(source.getTravelerProfile());
         target.setBirthDate(source.getBirthDate());
         target.setTelephone(source.getTelephone());
         target.setCountry(source.getCountry());
@@ -63,6 +64,7 @@ public class DefaultUserFacade implements UserFacade {
         target.setId(source.getId());
         target.setFirstName(source.getFirstName());
         target.setLastName(source.getLastName());
+        target.setTravelerProfile(source.getTravelerProfile());
         target.setBirthDate(source.getBirthDate( ));
         target.setTelephone(source.getTelephone());
         target.setEmail(source.getEmail());
@@ -85,6 +87,7 @@ public class DefaultUserFacade implements UserFacade {
         target.setId(source.getId());
         target.setTelephone(source.getTelephone());
         target.setFirstName(source.getFirstName());
+        target.setTravelerProfile(source.getTravelerProfile());
         target.setLastName(source.getLastName());
         target.setBirthDate(source.getBirthDate());
         target.setCountry(source.getCountry());
@@ -169,6 +172,7 @@ public class DefaultUserFacade implements UserFacade {
 
         if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
         if (dto.getLastName() != null) user.setLastName(dto.getLastName());
+        if (dto.getTravelerProfile() != null) user.setTravelerProfile(dto.getTravelerProfile());
         if (dto.getTelephone() != null) user.setTelephone(dto.getTelephone());
         if (dto.getEmail() != null) user.setEmail(dto.getEmail());
         if (dto.getBirthDate() != null) user.setBirthDate(dto.getBirthDate());
