@@ -22,15 +22,6 @@ public class JwtTokenFilter extends GenericFilterBean {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-
-        HttpServletRequest request = (HttpServletRequest) servletRequest;
-        String path = request.getRequestURI();
-
-        if (path.startsWith("/route")) {
-            filterChain.doFilter(servletRequest, servletResponse);
-            return;
-        }
-
         Authentication authentication = jwt.extract((HttpServletRequest) servletRequest);
         if (authentication != null) {
             SecurityContextHolder.getContext().setAuthentication(authentication);
