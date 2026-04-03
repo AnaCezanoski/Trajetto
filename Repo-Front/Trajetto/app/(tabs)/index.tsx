@@ -1,11 +1,14 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Image } from 'react-native';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
@@ -46,7 +49,7 @@ export default function HomeScreen() {
           <Text style={styles.heroText}>
             Discover your traveler profile and create personalized itineraries.
           </Text>
-          <TouchableOpacity style={styles.heroButton}>
+          <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
             <Text style={styles.heroButtonText}>Start Now</Text>
           </TouchableOpacity>
         </View>

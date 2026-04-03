@@ -1,9 +1,9 @@
-import { View, StyleSheet } from 'react-native';
-import MapView, {Polyline} from 'react-native-maps';
-import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
 import { RouteService } from '@/services/routeService';
 import polyline from '@mapbox/polyline';
+import * as Location from 'expo-location';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 
 type Region = {
     latitude: number;
@@ -15,13 +15,14 @@ type Region = {
 const Mapa = () => {
     const [region, setRegion] = useState<Region | null>(null);
     const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+    const [points, setPoints] = useState<{ latitude: number; longitude: number }[]>([]);
 
     useEffect(() => {
         const getLocation = async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
 
             if (status !== 'granted') {
-                console.log('Location permission denied.');
+                console.log('Permissão de localização negada');
                 return;
             }
 
@@ -35,7 +36,7 @@ const Mapa = () => {
             };
 
             setRegion(newRegion);
-            console.log('got location');
+            console.log('pegou location');
 
             await fecthRoute(newRegion);
 
@@ -54,17 +55,32 @@ const Mapa = () => {
     const fecthRoute = async (region: Region) => {
         if (!region) return;
 
+        const origin = {
+            latitude: region.latitude,
+            longitude: region.longitude,
+        };
+
+        const destination = {
+            latitude: -25.4300,
+            longitude: -49.2700,
+        };
+
+        const waypoints = [
+            { latitude: -25.4400, longitude: -49.2800 },
+            { latitude: -25.4500, longitude: -49.2900 },
+        ];
+
+        const toAPI = (point: { latitude: number; longitude: number }) => ({
+            lat: point.latitude,
+            lng: point.longitude,
+        });
+
         try {
-            const data = await RouteService.getRoute(
-                {
-                    lat: region.latitude,
-                    lng: region.longitude,
-                },
-                {
-                    lat: -25.4300,
-                    lng: -49.2700,
-                }
-            )
+            const data = await RouteService.getRoute({
+                origin: toAPI(origin),
+                destination: toAPI(destination),
+                waypoints: waypoints.map(toAPI),
+            });
 
             const decoded = polyline.decode(data.geometry);
 
@@ -74,14 +90,15 @@ const Mapa = () => {
             }));
 
             setRouteCoords(coords);
+            setPoints([origin, ...waypoints, destination])
         } catch (error) {
             console.log(error);
         }
 
     }
 
-    useEffect(()=>{
-        console.log('routeCoords: ',routeCoords);
+    useEffect(() => {
+        console.log('routeCoords: ', routeCoords);
     }, [routeCoords])
 
 
@@ -100,6 +117,19 @@ const Mapa = () => {
                     />
                 )}
 
+                {points.map((points, index) => (
+                    <Marker key={index} coordinate={points}>
+                        <View style={styles.marker}>
+                            <Text style={styles.markerText}>
+                                {index + 1}
+                            </Text>
+                        </View>
+
+                    </Marker>
+                ))}
+
+
+
 
             </MapView>
         </View>
@@ -115,5 +145,17 @@ const styles = StyleSheet.create({
     },
     map: {
         flex: 1,
-    }
+    },
+    marker: {
+        backgroundColor: 'black',
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        borderRadius: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    markerText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
 });
