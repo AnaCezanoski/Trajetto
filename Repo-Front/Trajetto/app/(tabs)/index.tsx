@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,33 +27,35 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-     {/* Card lista de usuários — só mostra se for admin */}
-     {user?.isAdmin && (
-       <View style={styles.heroCard}>
-         <Text style={styles.heroTitle}>Registered Users</Text>
-         <Text style={styles.heroText}>
-           Manage registered users in Trajetto.
-         </Text>
-         <TouchableOpacity
-           style={styles.heroButton}
-           onPress={() => router.push('/UserListScreen')}>
-           <Text style={styles.heroButtonText}>View Users</Text>
-         </TouchableOpacity>
-       </View>
-     )}
+      {/* Card lista de usuários — só mostra se for admin */}
+      {user?.isAdmin && (
+        <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>Registered Users</Text>
+          <Text style={styles.heroText}>
+            Manage registered users in Trajetto.
+          </Text>
+          <TouchableOpacity
+            style={styles.heroButton}
+            onPress={() => router.push('/UserListScreen')}>
+            <Text style={styles.heroButtonText}>View Users</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Card principal */}
       <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Traveler Profile Test</Text>
-          <Text style={styles.heroText}>
-            Discover your traveler profile and create personalized itineraries.
-          </Text>
-          <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
-            <Text style={styles.heroButtonText}>Start Now</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.exploreEmoji}>🧾</Text>
+        <Text style={styles.heroTitle}>Traveler Profile Test</Text>
+        <Text style={styles.heroText}>
+          Discover your traveler profile and create personalized itineraries.
+        </Text>
+        <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
+          <Text style={styles.heroButtonText}>Start Now</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.heroCard}>
+        <Text style={styles.exploreEmoji}>✈️</Text>
         <Text style={styles.heroTitle}>Generate Travel Itinerary</Text>
         <Text style={styles.heroText}>
           Discover personalized destinations based on your traveler profile.
@@ -63,6 +64,21 @@ export default function HomeScreen() {
           <Text style={styles.heroButtonText}>Start Now</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ✅ Card novo — Explorar Pontos Turísticos */}
+      <View style={[styles.heroCard, styles.exploreCard]}>
+        <Text style={styles.exploreEmoji}>🗺️</Text>
+        <Text style={styles.heroTitle}>Explore Tourist Spots</Text>
+        <Text style={styles.heroText}>
+          Search for tourist attractions, museums, monuments and more in any city.
+        </Text>
+        <TouchableOpacity
+          style={styles.heroButton}
+          onPress={() => router.push('/ExploreScreen')}>
+          <Text style={[styles.heroButtonText, styles.exploreButtonText]}>Explore Now</Text>
+        </TouchableOpacity>
+      </View>
+
     </ScrollView>
   );
 }
@@ -81,6 +97,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#023665', borderRadius: 16,
     padding: 24, marginBottom: 32,
   },
+
+  exploreCard: {
+    backgroundColor: '#023665',
+  },
+  exploreEmoji: {
+    fontSize: 32, marginBottom: 8,
+  },
+  exploreButtonText: {
+    color: '#023665',
+  },
+
   heroTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
   heroText: { fontSize: 14, color: '#c7d2fe', marginBottom: 20, lineHeight: 20 },
   heroButton: {
@@ -98,11 +125,8 @@ const styles = StyleSheet.create({
   },
   actionIcon: { fontSize: 28 },
   actionLabel: { fontSize: 13, fontWeight: '600', color: '#444' },
-
   banner: {
-    width: 600,
-    height: 300,
-    resizeMode: 'contain',
-    alignSelf: 'center'
+    width: 600, height: 300,
+    resizeMode: 'contain', alignSelf: 'center',
   },
 });
