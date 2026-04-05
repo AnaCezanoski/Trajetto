@@ -3,14 +3,17 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Linking,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   SafeAreaView,
+  Dimensions,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+
+const { width } = Dimensions.get('window');
 
 function categoryIcon(kinds: string): string {
   if (kinds.includes('museum'))    return '🏛️';
@@ -34,41 +37,60 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function SpotDetailScreen() {
   const router = useRouter();
-
-  // Expo Router passa params como string — precisamos parsear o objeto spot
   const params = useLocalSearchParams<{ spot: string }>();
   const spot = JSON.parse(params.spot);
 
   const category = spot.kinds.split(',')[0].replace(/_/g, ' ');
 
-  function openInMaps() {
-    const url = `https://www.google.com/maps/search/?api=1&query=${spot.point.lat},${spot.point.lon}`;
-    Linking.openURL(url);
-  }
+  const region = {
+    latitude: spot.point.lat,
+    longitude: spot.point.lon,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
 
-        <View style={styles.iconWrapper}>
-          <Text style={styles.iconText}>{categoryIcon(spot.kinds)}</Text>
+        {/* Mapa */}
+        <MapView
+          style={styles.map}
+          provider={PROVIDER_DEFAULT}
+          initialRegion={region}
+          scrollEnabled={false}
+          zoomEnabled={false}
+        >
+          <Marker
+            coordinate={{ latitude: spot.point.lat, longitude: spot.point.lon }}
+            title={spot.name || 'Nameless tourist attraction'}
+            description={category}
+          />
+        </MapView>
+
+        {/* Ícone e nome */}
+        <View style={styles.header}>
+          <View style={styles.iconWrapper}>
+            <Text style={styles.iconText}>{categoryIcon(spot.kinds)}</Text>
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.name} numberOfLines={2}>
+              {spot.name || 'Nameless tourist attraction'}
+            </Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{category}</Text>
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.name}>{spot.name || 'Ponto sem nome'}</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{category}</Text>
-        </View>
-
+        {/* Informações */}
         <View style={styles.card}>
           <Row label="Latitude"  value={spot.point.lat.toFixed(6)} />
           <Row label="Longitude" value={spot.point.lon.toFixed(6)} />
           <Row label="ID (OSM)"  value={spot.xid} />
         </View>
 
-        <TouchableOpacity style={styles.mapButton} onPress={openInMaps}>
-          <Text style={styles.mapButtonText}>🗺️  Open in Google Maps</Text>
-        </TouchableOpacity>
-
+        {/* Botão voltar */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Return</Text>
         </TouchableOpacity>
@@ -80,27 +102,48 @@ export default function SpotDetailScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F9FAFB' },
-  container: { padding: 24, alignItems: 'center' },
+  container: { paddingBottom: 32 },
+
+  // Mapa ocupa toda a largura, sem padding
+  map: {
+    width: width,
+    height: 240,
+  },
+
+  // Header (ícone + nome) abaixo do mapa
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    gap: 14,
+  },
   iconWrapper: {
-    width: 80, height: 80, borderRadius: 20,
+    width: 56, height: 56, borderRadius: 14,
     backgroundColor: '#EEF2FF',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
+    flexShrink: 0,
   },
-  iconText: { fontSize: 40 },
+  iconText: { fontSize: 28 },
+  headerText: { flex: 1 },
   name: {
-    fontSize: 22, fontWeight: '700',
-    color: '#111827', textAlign: 'center', marginBottom: 8,
+    fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6,
   },
   badge: {
+    alignSelf: 'flex-start',
     backgroundColor: '#EEF2FF', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 4, marginBottom: 24,
+    paddingHorizontal: 12, paddingVertical: 3,
   },
-  badgeText: { fontSize: 13, color: '#023665', fontWeight: '500', textTransform: 'capitalize' },
+  badgeText: {
+    fontSize: 12, color: '#023665',
+    fontWeight: '500', textTransform: 'capitalize',
+  },
+
+  // Card de infos
   card: {
-    width: '100%', backgroundColor: '#fff',
-    borderRadius: 14, borderWidth: 1,
-    borderColor: '#E5E7EB', marginBottom: 16,
+    marginHorizontal: 16,
+    backgroundColor: '#fff', borderRadius: 14,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -109,16 +152,12 @@ const styles = StyleSheet.create({
   },
   rowLabel: { fontSize: 14, color: '#6B7280' },
   rowValue: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  mapButton: {
-    width: '100%', backgroundColor: '#023665',
-    borderRadius: 12, paddingVertical: 14,
-    alignItems: 'center', marginBottom: 12,
-  },
-  mapButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+
   backButton: {
-    width: '100%', borderRadius: 12,
-    borderWidth: 1, borderColor: '#E5E7EB',
+    marginHorizontal: 16,
+    borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB',
     paddingVertical: 14, alignItems: 'center',
+    backgroundColor: '#fff',
   },
   backButtonText: { color: '#6B7280', fontSize: 15 },
 });
