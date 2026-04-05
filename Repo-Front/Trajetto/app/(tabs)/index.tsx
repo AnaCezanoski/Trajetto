@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,10 +8,21 @@ import {
   View
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useItineraryStore } from './../../hooks/itineraryStore';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { itinerary, fetchItinerary } = useItineraryStore();
+
+  useEffect(() => {
+    if (!user) return
+    fetchItinerary(user.id)
+  }, [user])
+
+  const formatTime = (time: string) => {
+    return time.slice(0, 5);
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -28,41 +38,72 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-     {/* Card lista de usuários — só mostra se for admin */}
-     {user?.isAdmin && (
-       <View style={styles.heroCard}>
-         <Text style={styles.heroTitle}>Registered Users</Text>
-         <Text style={styles.heroText}>
-           Manage registered users in Trajetto.
-         </Text>
-         <TouchableOpacity
-           style={styles.heroButton}
-           onPress={() => router.push('/UserListScreen')}>
-           <Text style={styles.heroButtonText}>View Users</Text>
-         </TouchableOpacity>
-       </View>
-     )}
-
-      {/* Card principal */}
-      <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Traveler Profile Test</Text>
+      {/* Card lista de usuários — só mostra se for admin */}
+      {user?.isAdmin && (
+        <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>Registered Users</Text>
           <Text style={styles.heroText}>
-            Discover your traveler profile and create personalized itineraries.
+            Manage registered users in Trajetto.
           </Text>
-          <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
-            <Text style={styles.heroButtonText}>Start Now</Text>
+          <TouchableOpacity
+            style={styles.heroButton}
+            onPress={() => router.push('/UserListScreen')}>
+            <Text style={styles.heroButtonText}>View Users</Text>
           </TouchableOpacity>
         </View>
+      )}
 
-      <View style={styles.heroCard}>
-        <Text style={styles.heroTitle}>Generate Travel Itinerary</Text>
-        <Text style={styles.heroText}>
-          Discover personalized destinations based on your traveler profile.
-        </Text>
-        <TouchableOpacity style={styles.heroButton}>
-          <Text style={styles.heroButtonText}>Start Now</Text>
-        </TouchableOpacity>
-      </View>
+
+
+      {itinerary ? (
+
+        <View style={styles.places}>
+          {itinerary.places.map((place, index) => (
+            <View key={index} style={styles.placeBubble}>
+              <View style={styles.placeBubbleContent}>
+                <View style={styles.placeBubbleHeader}>
+                  <Text style={[styles.placeBubbleTime, styles.placeBubbleTextHeader]}>{formatTime(place.estimatedVisitTime)}</Text>
+                  <Text style={styles.placeBubbleTextHeader}>{place.name}</Text>
+                </View>
+                <Text
+                  style={styles.placeAddress}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >{place.address}</Text>
+              </View>
+              <Text style={styles.placeDistance}>0.2km</Text>
+            </View>
+          ))}
+        </View>
+
+
+
+      )
+        : (
+          <>
+            {/* Card principal */}
+            <View style={styles.heroCard}>
+              <Text style={styles.heroTitle}>Traveler Profile Test</Text>
+              <Text style={styles.heroText}>
+                Discover your traveler profile and create personalized itineraries.
+              </Text>
+              <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
+                <Text style={styles.heroButtonText}>Start Now</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.heroCard}>
+              <Text style={styles.heroTitle}>Generate Travel Itinerary</Text>
+              <Text style={styles.heroText}>
+                Discover personalized destinations based on your traveler profile.
+              </Text>
+              <TouchableOpacity style={styles.heroButton}>
+                <Text style={styles.heroButtonText}>Start Now</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
     </ScrollView>
   );
 }
@@ -105,4 +146,50 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     alignSelf: 'center'
   },
+
+  places: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  placeBubble: {
+    width: '100%',
+    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 8,
+    flex: 1,
+    minWidth: 0,
+
+  },
+  placeAddress: {
+    fontSize: 16,
+    color: '#666',
+    flexShrink: 1,
+  },
+  placeDistance: {
+    marginLeft: 8,
+    minWidth: 0,
+  },
+  placeBubbleHeader: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    flex: 1,
+    minWidth: 0,
+    gap: 8,
+  },
+  placeBubbleTextHeader: {
+    fontSize: 18,
+  },
+  placeBubbleTime: {
+    fontWeight: 'bold',
+  },
+  placeBubbleContent: {
+    flexDirection: 'column',
+    flex: 1,
+    minWidth: 0,
+
+  }
 });
