@@ -1,6 +1,6 @@
-import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
@@ -12,8 +12,8 @@ import RegisterScreen from '../app/RegisterScreen';
 import ProfileScreen from '../app/ProfileScreen';
 
 // Telas admin
-import UserListScreen from '../app/admin/UserListScreen';
-import UserDetailScreen from '../app/admin/UserDetailScreen';
+import UserDetailScreen from '../app/UserDetailScreen';
+import UserListScreen from '../app/UserListScreen';
 
 const Stack = createNativeStackNavigator();
 

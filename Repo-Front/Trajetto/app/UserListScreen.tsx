@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { User } from '../types/user';
-import { useAuth } from '../context/AuthContext';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 
 export default function UserListScreen() {
   const { logout } = useAuth();
@@ -44,7 +44,7 @@ export default function UserListScreen() {
       <FlatList
         data={users}
         keyExtractor={(item, index) =>
-          item.code !== undefined ? String(item.code) : String(index)
+          item.id !== undefined ? String(item.id) : String(index)
         }
         renderItem={({ item }) => (
           <View style={styles.card}>

@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const logoutRef = useRef<() => Promise<void>>();
+  const logoutRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   const logout = async () => {
     try { await api.post('/user/logout'); } catch {}
