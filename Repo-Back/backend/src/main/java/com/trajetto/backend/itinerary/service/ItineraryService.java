@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -78,6 +79,29 @@ public class ItineraryService {
             return toDTO(activeItineraries.get(0));
         }
         return null;
+    }
+
+    public ItineraryResponseDTO generateGenericItinerary() {
+        // Criando lugares baseados no protótipo (Torre Eiffel, Arco do Triunfo)
+        PlaceResponseDTO place1 = new PlaceResponseDTO();
+        place1.setId(1L);
+        place1.setName("Eiffel Tower");
+        place1.setAddress("Champ de Mars, 5 Avenue Anatole France, Paris");
+
+        PlaceResponseDTO place2 = new PlaceResponseDTO();
+        place2.setId(2L);
+        place2.setName("Louvre Museum");
+        place2.setAddress("Rue de Rivoli, Paris");
+
+        // Montando o roteiro
+        ItineraryResponseDTO itinerary = new ItineraryResponseDTO();
+        itinerary.setId(999L);
+        itinerary.setTitle("Trip to Paris");
+        itinerary.setStartDate(LocalDate.now());
+        itinerary.setEndDate(LocalDate.now().plusDays(3));
+        itinerary.setPlaces(Arrays.asList(place1, place2));
+
+        return itinerary;
     }
 
     private ItineraryResponseDTO toDTO(ItineraryModel model) {

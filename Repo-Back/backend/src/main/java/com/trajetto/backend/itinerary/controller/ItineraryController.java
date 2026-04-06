@@ -22,7 +22,11 @@ public class ItineraryController {
     @Autowired
     private ItineraryService itineraryService;
 
-
+    @GetMapping("/generic")
+    public ResponseEntity<ItineraryResponseDTO> getGenericItinerary() {
+        ItineraryResponseDTO itinerary = itineraryService.generateGenericItinerary();
+        return ResponseEntity.ok(itinerary);
+    }
 
     @PostMapping("/mock/{userId}")
     public ResponseEntity<ItineraryResponseDTO> getItineraries(@PathVariable Long userId) {
