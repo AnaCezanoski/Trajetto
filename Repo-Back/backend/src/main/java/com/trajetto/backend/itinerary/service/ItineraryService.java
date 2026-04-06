@@ -2,6 +2,7 @@ package com.trajetto.backend.itinerary.service;
 
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
 import com.trajetto.backend.itinerary.dto.PlaceResponseDTO;
+import com.trajetto.backend.itinerary.dto.DestinationSuggestionDTO;
 import com.trajetto.backend.itinerary.model.ItineraryModel;
 import com.trajetto.backend.itinerary.model.PlaceModel;
 import com.trajetto.backend.itinerary.repository.ItineraryRepository;
@@ -82,7 +83,6 @@ public class ItineraryService {
     }
 
     public ItineraryResponseDTO generateGenericItinerary() {
-        // Criando lugares baseados no protótipo (Torre Eiffel, Arco do Triunfo)
         PlaceResponseDTO place1 = new PlaceResponseDTO();
         place1.setId(1L);
         place1.setName("Eiffel Tower");
@@ -93,7 +93,6 @@ public class ItineraryService {
         place2.setName("Louvre Museum");
         place2.setAddress("Rue de Rivoli, Paris");
 
-        // Montando o roteiro
         ItineraryResponseDTO itinerary = new ItineraryResponseDTO();
         itinerary.setId(999L);
         itinerary.setTitle("Trip to Paris");
@@ -102,6 +101,15 @@ public class ItineraryService {
         itinerary.setPlaces(Arrays.asList(place1, place2));
 
         return itinerary;
+    }
+
+    public List<DestinationSuggestionDTO> getGenericSuggestions() {
+        return Arrays.asList(
+                new DestinationSuggestionDTO(1L, "Paris", "France", "The City of Lights, perfect for those seeking culture and romance."),
+                new DestinationSuggestionDTO(2L, "Tokyo", "Japan", "A vibrant metropolis that blends tradition and high technology."),
+                new DestinationSuggestionDTO(3L, "Rome", "Italy", "An open-air museum with history on every corner."),
+                new DestinationSuggestionDTO(4L, "New York", "USA", "The city that never sleeps, ideal for exploring diverse cultures.")
+        );
     }
 
     private ItineraryResponseDTO toDTO(ItineraryModel model) {

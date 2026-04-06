@@ -1,6 +1,7 @@
 package com.trajetto.backend.itinerary.controller;
 
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
+import com.trajetto.backend.itinerary.dto.DestinationSuggestionDTO;
 import com.trajetto.backend.itinerary.model.ItineraryModel;
 import com.trajetto.backend.itinerary.model.PlaceModel;
 import com.trajetto.backend.itinerary.service.ItineraryService;
@@ -11,6 +12,8 @@ import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Setter
 @Getter
@@ -42,5 +45,11 @@ public class ItineraryController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
         }
+    }
+
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<DestinationSuggestionDTO>> getSuggestions() {
+        List<DestinationSuggestionDTO> suggestions = itineraryService.getGenericSuggestions();
+        return ResponseEntity.ok(suggestions);
     }
 }
