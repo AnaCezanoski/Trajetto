@@ -15,4 +15,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// ← REMOVIDO o interceptor de response daqui
+// O 401 é tratado APENAS no AuthContext
+
 export default api;

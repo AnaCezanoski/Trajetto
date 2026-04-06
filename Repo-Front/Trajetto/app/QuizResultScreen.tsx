@@ -1,16 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { quizData } from '../data/quizData';
+import { api } from '../services/api';
 
 export default function QuizResultScreen() {
   const router = useRouter();
   const { profile } = useLocalSearchParams<{ profile: string }>();
 
   const perfil = quizData.perfis[profile ?? ''];
+
+  useEffect(() => {
+    if (profile) {
+      api.put('/user/me', { travelerProfile: profile }).catch(() => {});
+    }
+  }, [profile]);
 
   if (!perfil) {
     return (
