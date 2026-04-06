@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const ip = '172.20.10.5';
+const ip = '10.0.0.100';
 
 export const api = axios.create({
   baseURL: `http://${ip}:8080`,
@@ -14,5 +14,8 @@ api.interceptors.request.use(async (config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// ← REMOVIDO o interceptor de response daqui
+// O 401 é tratado APENAS no AuthContext
 
 export default api;
