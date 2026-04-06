@@ -19,7 +19,7 @@ export default function QuizScreen() {
   const [scores, setScores] = useState<Record<string, number>>({ ...INITIAL_SCORES });
 
   useEffect(() => {
-    setQuestions(shuffle([...quizData.perguntas]));
+    setQuestions(shuffle([...quizData.perguntas]).slice(0, 10));
   }, []);
 
   if (questions.length === 0) return null;
@@ -77,20 +77,30 @@ export default function QuizScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.question}>{current.texto}</Text>
 
-        {/* Sim / Não */}
+        {/* Sim / Não / Não sei dizer */}
         {current.tipo === 'sim_nao' && (
-          <View style={styles.simNaoRow}>
-            {(['sim', 'nao'] as const).map((opt) => (
-              <TouchableOpacity
-                key={opt}
-                style={[styles.simNaoButton, selected === opt && styles.simNaoSelected]}
-                onPress={() => setSelected(opt)}
-              >
-                <Text style={[styles.simNaoText, selected === opt && styles.simNaoTextSelected]}>
-                  {opt === 'sim' ? 'Sim' : 'Não'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View>
+            <View style={styles.simNaoRow}>
+              {(['sim', 'nao'] as const).map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.simNaoButton, selected === opt && styles.simNaoSelected]}
+                  onPress={() => setSelected(opt)}
+                >
+                  <Text style={[styles.simNaoText, selected === opt && styles.simNaoTextSelected]}>
+                    {opt === 'sim' ? 'Sim' : 'Não'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[styles.naoSeiButton, selected === 'nao_sei' && styles.simNaoSelected]}
+              onPress={() => setSelected('nao_sei')}
+            >
+              <Text style={[styles.naoSeiText, selected === 'nao_sei' && styles.simNaoTextSelected]}>
+                Não sei dizer
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -182,6 +192,16 @@ const styles = StyleSheet.create({
   simNaoSelected: { borderColor: PRIMARY, backgroundColor: '#eef2ff' },
   simNaoText: { fontSize: 17, fontWeight: '600', color: '#555' },
   simNaoTextSelected: { color: PRIMARY },
+  naoSeiButton: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+  },
+  naoSeiText: { fontSize: 15, fontWeight: '500', color: '#9ca3af' },
 
   option: {
     flexDirection: 'row',

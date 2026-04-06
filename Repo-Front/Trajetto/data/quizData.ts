@@ -32,7 +32,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { SOCIAL: 2, AVENTUREIRO: 1 },
-        nao: { SOLITARIO: 2, NATUREZA: 1 }
+        nao: { SOLITARIO: 2, NATUREZA: 1 },
+        nao_sei: { RELAXAMENTO: 1, AVENTUREIRO: 1 }
       }
     },
     {
@@ -41,7 +42,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { CULTURAL: 3 },
-        nao: { AVENTUREIRO: 1, LUXO: 1 }
+        nao: { AVENTUREIRO: 1, LUXO: 1 },
+        nao_sei: { CULTURAL: 1, MOCHILEIRO: 1 }
       }
     },
     {
@@ -50,7 +52,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { AVENTUREIRO: 3, NATUREZA: 2 },
-        nao: { LUXO: 2, CULTURAL: 1 }
+        nao: { LUXO: 2, CULTURAL: 1 },
+        nao_sei: { NATUREZA: 1, RELAXAMENTO: 1 }
       }
     },
     {
@@ -70,7 +73,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { CULTURAL: 1, LUXO: 2 },
-        nao: { AVENTUREIRO: 2, SOCIAL: 1 }
+        nao: { AVENTUREIRO: 2, SOCIAL: 1 },
+        nao_sei: { CULTURAL: 1, RELAXAMENTO: 1 }
       }
     },
     {
@@ -79,7 +83,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { LUXO: 3 },
-        nao: { AVENTUREIRO: 1, MOCHILEIRO: 2 }
+        nao: { AVENTUREIRO: 1, MOCHILEIRO: 2 },
+        nao_sei: { RELAXAMENTO: 1, CULTURAL: 1 }
       }
     },
     {
@@ -99,7 +104,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { CULTURAL: 2, AVENTUREIRO: 1, MOCHILEIRO: 1 },
-        nao: { LUXO: 1, RELAXAMENTO: 1 }
+        nao: { LUXO: 1, RELAXAMENTO: 1 },
+        nao_sei: { CULTURAL: 1, RELAXAMENTO: 1 }
       }
     },
     {
@@ -108,7 +114,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { SOLITARIO: 3, MOCHILEIRO: 1 },
-        nao: { SOCIAL: 2, RELAXAMENTO: 1 }
+        nao: { SOCIAL: 2, RELAXAMENTO: 1 },
+        nao_sei: { MOCHILEIRO: 1, AVENTUREIRO: 1 }
       }
     },
     {
@@ -128,7 +135,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { AVENTUREIRO: 2, MOCHILEIRO: 2 },
-        nao: { LUXO: 1, CULTURAL: 1 }
+        nao: { LUXO: 1, CULTURAL: 1 },
+        nao_sei: { RELAXAMENTO: 1, MOCHILEIRO: 1 }
       }
     },
     {
@@ -137,7 +145,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { NATUREZA: 3, AVENTUREIRO: 1 },
-        nao: { LUXO: 1, SOCIAL: 1 }
+        nao: { LUXO: 1, SOCIAL: 1 },
+        nao_sei: { NATUREZA: 1, RELAXAMENTO: 1 }
       }
     },
     {
@@ -157,7 +166,8 @@ export const quizData: QuizData = {
       tipo: "sim_nao",
       pontuacao: {
         sim: { SOCIAL: 3, AVENTUREIRO: 1 },
-        nao: { SOLITARIO: 1, CULTURAL: 1 }
+        nao: { SOLITARIO: 1, CULTURAL: 1 },
+        nao_sei: { SOCIAL: 1, CULTURAL: 1 }
       }
     },
     {
@@ -169,6 +179,59 @@ export const quizData: QuizData = {
         { letra: "B", texto: "Gasto equilibrado — nem luxo nem privação", pontuacao: { CULTURAL: 1, RELAXAMENTO: 1 } },
         { letra: "C", texto: "Prefiro viajar menos e bem, sem economizar", pontuacao: { LUXO: 3 } },
         { letra: "D", texto: "Não me importo muito, o importante é a experiência", pontuacao: { AVENTUREIRO: 2, NATUREZA: 1 } }
+      ]
+    },
+    {
+      id: 16,
+      texto: "Que tipo de foto você mais tira nas viagens?",
+      tipo: "multipla_escolha",
+      opcoes: [
+        { letra: "A", texto: "Paisagens naturais selvagens", pontuacao: { NATUREZA: 2, AVENTUREIRO: 1 } },
+        { letra: "B", texto: "Monumentos históricos e fachadas culturais", pontuacao: { CULTURAL: 2 } },
+        { letra: "C", texto: "Momentos com amigos em festas e bares", pontuacao: { SOCIAL: 3 } },
+        { letra: "D", texto: "O quarto do hotel, a piscina e o room service", pontuacao: { RELAXAMENTO: 2, LUXO: 2 } }
+      ]
+    },
+    {
+      id: 17,
+      texto: "Você prefere um itinerário cheio de atividades a um dia livre sem agenda?",
+      tipo: "sim_nao",
+      pontuacao: {
+        sim: { AVENTUREIRO: 2, CULTURAL: 1 },
+        nao: { RELAXAMENTO: 2, SOLITARIO: 1 },
+        nao_sei: { RELAXAMENTO: 1, CULTURAL: 1 }
+      }
+    },
+    {
+      id: 18,
+      texto: "Qual seria seu roteiro ideal de uma semana?",
+      tipo: "multipla_escolha",
+      opcoes: [
+        { letra: "A", texto: "Acampamento e trilhas em parques nacionais", pontuacao: { NATUREZA: 3, AVENTUREIRO: 1 } },
+        { letra: "B", texto: "City tour por cidades históricas e museus", pontuacao: { CULTURAL: 3 } },
+        { letra: "C", texto: "Resort all-inclusive na praia sem sair do lugar", pontuacao: { RELAXAMENTO: 2, LUXO: 2 } },
+        { letra: "D", texto: "Mochilão passando por vários países", pontuacao: { MOCHILEIRO: 3 } }
+      ]
+    },
+    {
+      id: 19,
+      texto: "Você gosta de aprender sobre a língua e os costumes locais antes de viajar?",
+      tipo: "sim_nao",
+      pontuacao: {
+        sim: { CULTURAL: 3 },
+        nao: { AVENTUREIRO: 1, RELAXAMENTO: 1 },
+        nao_sei: { CULTURAL: 1, MOCHILEIRO: 1 }
+      }
+    },
+    {
+      id: 20,
+      texto: "Se pudesse escolher um tipo de acomodação, qual seria?",
+      tipo: "multipla_escolha",
+      opcoes: [
+        { letra: "A", texto: "Hostel com área de convivência animada", pontuacao: { SOCIAL: 3, MOCHILEIRO: 1 } },
+        { letra: "B", texto: "Hotel boutique com decoração única e charmosa", pontuacao: { CULTURAL: 2, LUXO: 1 } },
+        { letra: "C", texto: "Chalé isolado na montanha ou floresta", pontuacao: { SOLITARIO: 3, NATUREZA: 1 } },
+        { letra: "D", texto: "Pousada tranquila à beira-mar", pontuacao: { RELAXAMENTO: 3 } }
       ]
     }
   ],
