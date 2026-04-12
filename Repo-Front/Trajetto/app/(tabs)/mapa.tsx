@@ -1,11 +1,17 @@
 import { useAuth } from '@/context/AuthContext';
 import { useItineraryStore } from '@/hooks/itineraryStore';
 import { RouteService } from '@/services/routeService';
+import { MaterialIcons } from '@expo/vector-icons';
 import polyline from '@mapbox/polyline';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+
+const PIN_COLORS = [
+    '#E74C3C', '#3498DB', '#2ECC71', '#F1C40F', 
+    '#9B59B6', '#1ABC9C', '#E67E22', '#34495E'
+];
 
 type Region = {
     latitude: number;
@@ -19,7 +25,7 @@ const Mapa = () => {
     const { itinerary, fetchItinerary } = useItineraryStore();
     const [region, setRegion] = useState<Region | undefined>(undefined);
     const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
-    const [points, setPoints] = useState<{ latitude: number; longitude: number }[]>([]);
+    const [points, setPoints] = useState<any[]>([]);
 
 
     useEffect(() => {
@@ -79,7 +85,7 @@ const Mapa = () => {
             }));
 
             setRouteCoords(coords);
-            setPoints(sortedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude })));
+            setPoints(sortedPlaces);
 
 
             setRegion((prev) => {
@@ -116,20 +122,40 @@ const Mapa = () => {
                 showsUserLocation={true}
             >
                 {routeCoords.length > 0 && (
-                    <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />
+                    <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="#000000" />
                 )}
 
-                {points.map((point, index) => (
-                    <Marker key={index} coordinate={point}>
-                        <View style={styles.marker}>
-                            <Text style={styles.markerText}>{index + 1}</Text>
-                        </View>
-                    </Marker>
-                ))}
+                {points.map((point, index) => {
+                    const isOrigin = point.orderIndex === 0;
+                    const currentColor = PIN_COLORS[index % PIN_COLORS.length];
+
+                    return (
+                        <Marker
+                            key={`${point.name}-${index}`}
+                            coordinate={point}
+                            anchor={isOrigin ? { x: 0.5, y: 0.5 } : { x: 0.5, y: 1 }}
+                            tracksViewChanges={true}
+                        >
+                            {isOrigin ? (
+                                <View style={styles.originDot} />
+                            ) : (
+                                <View style={styles.pinoContainer}>
+                                    <MaterialIcons name="location-on" size={40} color={currentColor} />
+
+                                    <View style={styles.pinoNumeroContainer}>
+                                        <Text style={styles.pinoNumeroText}>
+                                            {index}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+                        </Marker>
+                    );
+                })}
             </MapView>
         </View>
     );
-};
+}
 
 export default Mapa
 
@@ -140,16 +166,36 @@ const styles = StyleSheet.create({
     map: {
         flex: 1,
     },
-    marker: {
-        backgroundColor: 'black',
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-        borderRadius: 6,
+    originDot: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#1068b5',
+        borderWidth: 3,
+        borderColor: '#ffffff',
+        elevation: 5,
+        zIndex: 99,
+    },
+
+    pinoContainer: {
         alignItems: 'center',
         justifyContent: 'center',
+        width: 48,
+        height: 48,
     },
-    markerText: {
-        color: 'white',
+    pinoNumeroContainer: {
+        position: 'absolute',
+        top: 12,
+        width: 15,
+        height: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'white',
+        borderRadius: 12,
+    },
+    pinoNumeroText: {
+        color: '#023665',
         fontWeight: 'bold',
+        fontSize: 12,
     },
 });
