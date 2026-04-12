@@ -105,7 +105,7 @@ export default function HomeScreen() {
         )}
 
       {/* Card principal */}
-      <View style={styles.heroCard}>
+      <View style={[styles.heroCard, {marginTop: 20}]}>
         <Text style={styles.exploreEmoji}>🧾</Text>
         <Text style={styles.heroTitle}>Traveler Profile Test</Text>
         <Text style={styles.heroText}>
