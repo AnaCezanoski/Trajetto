@@ -1,27 +1,26 @@
 import { create } from 'zustand';
 import { ItineraryService } from '../services/itineraryService';
 
-type Place = {
+export interface Places {
   name: string;
   address: string;
   latitude: number;
   longitude: number;
   estimatedVisitTime: string;
   orderIndex: number;
-};
+}
 
-type Itinerary = {
+export interface Itinerary {
   startDate: string;
   endDate: string;
   active: boolean;
-  places: Place[];
-};
+  places: Places[];
+}
 
 type ItineraryStore = {
   itinerary: Itinerary | null;
   loading: boolean;
   error: string | null;
-
   fetchItinerary: (userId: number) => Promise<void>;
 };
 

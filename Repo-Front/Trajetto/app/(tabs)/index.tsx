@@ -136,7 +136,7 @@ export default function HomeScreen() {
         </Text>
         <TouchableOpacity
           style={styles.heroButton}
-          onPress={() => router.push('/ExploreScreen')}>
+          onPress={() => router.push('../ExploreScreen')}>
           <Text style={[styles.heroButtonText, styles.exploreButtonText]}>Explore Now</Text>
         </TouchableOpacity>
       </View>

@@ -1,3 +1,5 @@
+import { useAuth } from '@/context/AuthContext';
+import { useItineraryStore } from '@/hooks/itineraryStore';
 import { RouteService } from '@/services/routeService';
 import polyline from '@mapbox/polyline';
 import * as Location from 'expo-location';
@@ -13,131 +15,123 @@ type Region = {
 };
 
 const Mapa = () => {
-    const [region, setRegion] = useState<Region | null>(null);
+    const { user } = useAuth();
+    const { itinerary, fetchItinerary } = useItineraryStore();
+    const [region, setRegion] = useState<Region | undefined>(undefined);
     const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
     const [points, setPoints] = useState<{ latitude: number; longitude: number }[]>([]);
 
-    useEffect(() => {
-        const getLocation = async () => {
-            let { status } = await Location.requestForegroundPermissionsAsync();
 
+    useEffect(() => {
+        if (user?.id) {
+            fetchItinerary(user.id);
+        }
+    }, [user]);
+
+
+    useEffect(() => {
+        const setupMap = async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                console.log('Permissão de localização negada');
+                console.log('Permissão negada');
                 return;
             }
 
             let location = await Location.getCurrentPositionAsync({});
-
-            const newRegion = {
+            const currentRegion = {
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
             };
-
-            setRegion(newRegion);
-            console.log('pegou location');
-
-            await fecthRoute(newRegion);
-
-        }
-
-        getLocation();
-    }, [])
-
-    const defaultRegion = {
-        latitude: -14.2350,
-        longitude: -51.9253,
-        latitudeDelta: 10,
-        longitudeDelta: 10,
-    };
-
-    const fecthRoute = async (region: Region) => {
-        if (!region) return;
-
-        const origin = {
-            latitude: region.latitude,
-            longitude: region.longitude,
+            setRegion(currentRegion);
         };
 
-        const destination = {
-            latitude: -25.4300,
-            longitude: -49.2700,
-        };
+        setupMap();
+    }, []);
 
-        const waypoints = [
-            { latitude: -25.4400, longitude: -49.2800 },
-            { latitude: -25.4500, longitude: -49.2900 },
-        ];
 
-        const toAPI = (point: { latitude: number; longitude: number }) => ({
-            lat: point.latitude,
-            lng: point.longitude,
-        });
+    const fetchRouteFromItinerary = async () => {
+        if (!itinerary || itinerary.places.length === 0) return;
+
+        const sortedPlaces = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
+
+        const origin = { latitude: sortedPlaces[0].latitude, longitude: sortedPlaces[0].longitude };
+        const destination = { latitude: sortedPlaces[sortedPlaces.length - 1].latitude, longitude: sortedPlaces[sortedPlaces.length - 1].longitude };
+
+
+        const waypoints = sortedPlaces.slice(1, -1).map(p => ({
+            lat: p.latitude,
+            lng: p.longitude,
+        }));
 
         try {
             const data = await RouteService.getRoute({
-                origin: toAPI(origin),
-                destination: toAPI(destination),
-                waypoints: waypoints.map(toAPI),
+                origin: { lat: origin.latitude, lng: origin.longitude },
+                destination: { lat: destination.latitude, lng: destination.longitude },
+                waypoints: waypoints,
             });
 
             const decoded = polyline.decode(data.geometry);
-
             const coords = decoded.map(([lat, lng]: number[]) => ({
                 latitude: lat,
                 longitude: lng,
             }));
 
             setRouteCoords(coords);
-            setPoints([origin, ...waypoints, destination])
-        } catch (error) {
-            console.log(error);
-        }
+            setPoints(sortedPlaces.map(p => ({ latitude: p.latitude, longitude: p.longitude })));
 
-    }
+
+            setRegion((prev) => {
+                if (!prev) return {
+                    latitude: origin.latitude,
+                    longitude: origin.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05
+                };
+
+                return {
+                    ...prev,
+                    latitude: origin.latitude,
+                    longitude: origin.longitude,
+                };
+            });
+
+        } catch (error) {
+            console.error("Erro na rota:", error);
+        }
+    };
 
     useEffect(() => {
-        console.log('routeCoords: ', routeCoords);
-    }, [routeCoords])
-
+        if (itinerary) {
+            fetchRouteFromItinerary();
+        }
+    }, [itinerary]);
 
     return (
         <View style={styles.container}>
             <MapView
                 style={styles.map}
-                region={
-                    region ?? defaultRegion
-                }
+                region={region}
+                showsUserLocation={true}
             >
                 {routeCoords.length > 0 && (
-                    <Polyline
-                        coordinates={routeCoords}
-                        strokeWidth={4}
-                    />
+                    <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="blue" />
                 )}
 
-                {points.map((points, index) => (
-                    <Marker key={index} coordinate={points}>
+                {points.map((point, index) => (
+                    <Marker key={index} coordinate={point}>
                         <View style={styles.marker}>
-                            <Text style={styles.markerText}>
-                                {index + 1}
-                            </Text>
+                            <Text style={styles.markerText}>{index + 1}</Text>
                         </View>
-
                     </Marker>
                 ))}
-
-
-
-
             </MapView>
         </View>
     );
-}
+};
 
 export default Mapa
-
 
 const styles = StyleSheet.create({
     container: {
