@@ -47,7 +47,7 @@ public class ItineraryService {
         eiffel.setLongitude(2.2945);
         eiffel.setEstimatedVisitTime(LocalTime.of(8, 0));
         eiffel.setItinerary(itinerary);
-        eiffel.setOrderIndex(1);
+        eiffel.setOrderIndex(0);
 
         PlaceModel louvre = new PlaceModel();
         louvre.setName("Louvre Museum");
@@ -56,10 +56,30 @@ public class ItineraryService {
         louvre.setLongitude(2.3376);
         louvre.setEstimatedVisitTime(LocalTime.of(11, 0));
         louvre.setItinerary(itinerary);
-        louvre.setOrderIndex(2);
+        louvre.setOrderIndex(1);
+
+        PlaceModel champsDeMars = new PlaceModel();
+        champsDeMars.setName("Champ de Mars Park");
+        champsDeMars.setAddress("2 Allée Adrienne Lecouvreur, 75007 Paris");
+        champsDeMars.setLatitude(48.8556);
+        champsDeMars.setLongitude(2.2986);
+        champsDeMars.setEstimatedVisitTime(LocalTime.of(9, 30));
+        champsDeMars.setItinerary(itinerary);
+        champsDeMars.setOrderIndex(2);
+
+        PlaceModel trocadero = new PlaceModel();
+        trocadero.setName("Trocadéro Gardens");
+        trocadero.setAddress("Place du Trocadéro et du 11 Novembre, 75016 Paris");
+        trocadero.setLatitude(48.8629);
+        trocadero.setLongitude(2.2873);
+        trocadero.setEstimatedVisitTime(LocalTime.of(10, 30));
+        trocadero.setItinerary(itinerary);
+        trocadero.setOrderIndex(3);
 
         places.add(eiffel);
         places.add(louvre);
+        places.add(champsDeMars);
+        places.add(trocadero);
         itinerary.setUser(user);
 
         itinerary.setPlaces(places);
