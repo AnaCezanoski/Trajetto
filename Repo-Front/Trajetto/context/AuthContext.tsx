@@ -28,9 +28,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   logoutRef.current = logout;
 
   useEffect(() => {
-    // Limpa tudo ao iniciar — REMOVA após testar!
-    AsyncStorage.clear().then(() => console.log('Storage zerado!'));
-
     (async () => {
       try {
         const token = await AsyncStorage.getItem('token');
@@ -56,13 +53,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (data: LoginRequest) => {
     const response = await api.post('/user/login', data);
-    console.log('RESPOSTA LOGIN COMPLETA:', JSON.stringify(response.data));
     const { token, user } = response.data;
-    console.log('isAdmin:', user.isAdmin); // ← veja o que aparece aqui
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     setUser(user);
   };
+
   const register = async (data: RegisterRequest) => {
     await api.post('/user/create', data);
   };

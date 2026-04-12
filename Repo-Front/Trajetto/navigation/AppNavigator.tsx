@@ -10,6 +10,8 @@ import RegisterScreen from '../app/RegisterScreen';
 
 // Telas usuário comum
 import ProfileScreen from '../app/ProfileScreen';
+import ExploreScreen from '../app/ExploreScreen';
+import SpotDetailScreen from '../app/SpotDetailScreen';
 
 // Telas admin
 import UserListScreen from '../app/admin/UserListScreen';
@@ -32,6 +34,10 @@ function UserStack() {
     <Stack.Navigator>
       <Stack.Screen name="Profile" component={ProfileScreen}
         options={{ title: 'Meu Perfil' }} />
+      <Stack.Screen name="Explore" component={ExploreScreen}
+        options={{ title: 'Explorar', headerShown: false }} />
+      <Stack.Screen name="SpotDetail" component={SpotDetailScreen}
+        options={{ title: 'Detalhes', headerBackTitle: 'Voltar' }} />
     </Stack.Navigator>
   );
 }
@@ -43,6 +49,10 @@ function AdminStack() {
         options={{ title: 'Usuários' }} />
       <Stack.Screen name="UserDetail" component={UserDetailScreen}
         options={{ title: 'Editar Usuário' }} />
+      <Stack.Screen name="Explore" component={ExploreScreen}
+        options={{ title: 'Explorar', headerShown: false }} />
+      <Stack.Screen name="SpotDetail" component={SpotDetailScreen}
+        options={{ title: 'Detalhes', headerBackTitle: 'Voltar' }} />
     </Stack.Navigator>
   );
 }

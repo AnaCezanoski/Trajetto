@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(mvc.pattern("/api/address/**")).permitAll()
                         .requestMatchers(mvc.pattern("/user/validateEmail/{email}")).permitAll()
                         .requestMatchers(mvc.pattern("/user/validateCpf/{cpf}")).permitAll()
+                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/tourist-spots")).permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/user")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/login")).permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/logout")).authenticated()
