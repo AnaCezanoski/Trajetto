@@ -6,16 +6,21 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { quizData } from '../data/quizData';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function QuizResultScreen() {
   const router = useRouter();
-  const { profile } = useLocalSearchParams<{ profile: string }>();
+  const { refreshUser } = useAuth();
+  const { profile, source } = useLocalSearchParams<{ profile: string; source?: string }>();
+  const fromProfile = source === 'profile';
 
   const perfil = quizData.perfis[profile ?? ''];
 
   useEffect(() => {
     if (profile) {
-      api.put('/user/me', { travelerProfile: profile }).catch(() => {});
+      api.put('/user/me', { travelerProfile: profile })
+        .then(() => refreshUser())
+        .catch(() => {});
     }
   }, [profile]);
 
@@ -23,8 +28,11 @@ export default function QuizResultScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.errorText}>Resultado não encontrado.</Text>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={styles.backButton}>
-          <Text style={styles.backButtonText}>Voltar ao início</Text>
+        <TouchableOpacity
+          onPress={() => fromProfile ? router.replace('/(tabs)/perfil') : router.replace('/(tabs)')}
+          style={styles.backButton}
+        >
+          <Text style={styles.backButtonText}>Voltar</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -62,9 +70,15 @@ export default function QuizResultScreen() {
         {/* Botão voltar */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.replace('/(tabs)')}
+          onPress={() =>
+            fromProfile
+              ? router.replace('/(tabs)/perfil')
+              : router.replace('/(tabs)')
+          }
         >
-          <Text style={styles.backButtonText}>Voltar ao início</Text>
+          <Text style={styles.backButtonText}>
+            {fromProfile ? 'Voltar ao perfil' : 'Começar a explorar'}
+          </Text>
         </TouchableOpacity>
 
       </ScrollView>

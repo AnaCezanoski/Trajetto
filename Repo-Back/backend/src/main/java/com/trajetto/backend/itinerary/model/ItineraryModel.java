@@ -29,6 +29,12 @@ public class ItineraryModel {
     @Column(name = "is_active")
     private Boolean active;
 
+    @Column(name = "origin_latitude")
+    private Double originLatitude;
+
+    @Column(name = "origin_longitude")
+    private Double originLongitude;
+
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private UserModel user;

@@ -1,5 +1,5 @@
 export interface User {
-  id: number;        // ← era code
+  id: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -7,6 +7,7 @@ export interface User {
   country: string | null;
   telephone: string | null;
   isAdmin: boolean;
+  travelerProfile: string | null;
 }
 
 export interface LoginRequest {

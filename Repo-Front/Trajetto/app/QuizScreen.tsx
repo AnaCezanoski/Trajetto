@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { quizData, shuffle, calcularPerfil, Pergunta } from '../data/quizData';
 
 const INITIAL_SCORES: Record<string, number> = {
@@ -13,6 +13,7 @@ const INITIAL_SCORES: Record<string, number> = {
 
 export default function QuizScreen() {
   const router = useRouter();
+  const { source } = useLocalSearchParams<{ source?: string }>();
   const [questions, setQuestions] = useState<Pergunta[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -51,7 +52,8 @@ export default function QuizScreen() {
 
     if (currentIndex === total - 1) {
       const perfil = calcularPerfil(newScores);
-      router.replace(`/QuizResultScreen?profile=${perfil}`);
+      const sourceParam = source ? `&source=${source}` : '';
+      router.replace(`/QuizResultScreen?profile=${perfil}${sourceParam}`);
     } else {
       setScores(newScores);
       setCurrentIndex(currentIndex + 1);
