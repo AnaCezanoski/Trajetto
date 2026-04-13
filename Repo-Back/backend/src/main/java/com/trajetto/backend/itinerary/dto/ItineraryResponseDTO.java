@@ -8,8 +8,11 @@ import java.util.List;
 @Data
 public class ItineraryResponseDTO {
 
+    private Long id;
     private LocalDate startDate;
     private LocalDate endDate;
     private Boolean active;
     private List<PlaceResponseDTO> places;
+    private Double originLatitude;
+    private Double originLongitude;
 }

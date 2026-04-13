@@ -1,0 +1,267 @@
+import { useAuth } from '@/context/AuthContext';
+import { PLACE_COLORS } from '@/constants/placeColors';
+import { useItineraryStore } from '@/hooks/itineraryStore';
+import { RouteService } from '@/services/routeService';
+import { MaterialIcons } from '@expo/vector-icons';
+import polyline from '@mapbox/polyline';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+
+type LatLng = { latitude: number; longitude: number };
+type Region = LatLng & { latitudeDelta: number; longitudeDelta: number };
+
+const Mapa = () => {
+    const { user } = useAuth();
+    const router = useRouter();
+    const { itinerary, fetchItinerary, setHighlightedPlace, focusedMapPlaceIndex, setFocusedMapPlace } = useItineraryStore();
+    const [region, setRegion] = useState<Region | undefined>(undefined);
+    const [segments, setSegments] = useState<LatLng[][]>([]);
+    const [points, setPoints] = useState<any[]>([]);
+    const mapRef = useRef<MapView>(null);
+
+    useEffect(() => {
+        const setup = async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') return;
+            const loc = await Location.getCurrentPositionAsync({});
+            setRegion({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+            });
+        };
+        setup();
+    }, []);
+
+    // Fetch itinerary if not already loaded in store
+    useEffect(() => {
+        if (!itinerary && user?.id) {
+            fetchItinerary(user.id);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!itinerary || itinerary.places.length === 0) return;
+        buildSegments();
+    }, [itinerary]);
+
+    const buildSegments = async () => {
+        if (!itinerary) return;
+        const sorted = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
+        setPoints(sorted);
+
+        // Center map on first point
+        if (sorted.length > 0) {
+            setRegion(prev => ({
+                ...(prev ?? { latitudeDelta: 0.06, longitudeDelta: 0.06 }),
+                latitude: sorted[0].latitude,
+                longitude: sorted[0].longitude,
+            }));
+        }
+
+        // Fetch each segment independently for individual coloring
+        const segmentPromises = sorted.slice(0, -1).map((place, i) =>
+            RouteService.getRoute({
+                origin: { lat: place.latitude, lng: place.longitude },
+                destination: { lat: sorted[i + 1].latitude, lng: sorted[i + 1].longitude },
+                waypoints: [],
+            }).then(data => {
+                const decoded = polyline.decode(data.geometry);
+                return decoded.map(([lat, lng]: number[]) => ({ latitude: lat, longitude: lng }));
+            }).catch(() => [
+                // Fallback: straight line if route API fails
+                { latitude: place.latitude, longitude: place.longitude },
+                { latitude: sorted[i + 1].latitude, longitude: sorted[i + 1].longitude },
+            ])
+        );
+
+        const results = await Promise.all(segmentPromises);
+        setSegments(results);
+    };
+
+    // Animate map to pin when coming from itinerary tab
+    useEffect(() => {
+        if (focusedMapPlaceIndex === null || points.length === 0) return;
+        const point = points[focusedMapPlaceIndex];
+        if (!point) return;
+        setTimeout(() => {
+            mapRef.current?.animateToRegion({
+                latitude: point.latitude,
+                longitude: point.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            }, 600);
+        }, 100);
+        const timer = setTimeout(() => setFocusedMapPlace(null), 1000);
+        return () => clearTimeout(timer);
+    }, [focusedMapPlaceIndex, points]);
+
+    const handlePinPress = (index: number) => {
+        setHighlightedPlace(index);
+        router.navigate('/(itinerary)/itinerario');
+    };
+
+    return (
+        <View style={styles.container}>
+            <MapView
+                ref={mapRef}
+                style={styles.map}
+                region={region}
+                showsUserLocation
+            >
+                {/* Segmento colorido por trecho */}
+                {segments.map((coords, i) => (
+                    <Polyline
+                        key={`seg-${i}`}
+                        coordinates={coords}
+                        strokeWidth={4}
+                        strokeColor={PLACE_COLORS[i % PLACE_COLORS.length]}
+                    />
+                ))}
+
+                {/* Marco zero — ponto de partida escolhido pelo usuário */}
+                {itinerary?.originLatitude != null && itinerary?.originLongitude != null && (
+                    <Marker
+                        coordinate={{ latitude: itinerary.originLatitude, longitude: itinerary.originLongitude }}
+                        anchor={{ x: 0.5, y: 0.5 }}
+                        tracksViewChanges={false}
+                    >
+                        <View style={styles.originWrapper}>
+                            <View style={styles.originDot} />
+                            <View style={styles.originLabel}>
+                                <Text style={styles.originLabelText}>Início</Text>
+                            </View>
+                        </View>
+                    </Marker>
+                )}
+
+                {/* Pins com label clicável */}
+                {points.map((point, index) => {
+                    const color = PLACE_COLORS[index % PLACE_COLORS.length];
+                    return (
+                        <Marker
+                            key={`pin-${index}`}
+                            coordinate={{ latitude: point.latitude, longitude: point.longitude }}
+                            anchor={{ x: 0.5, y: 1 }}
+                            tracksViewChanges={false}
+                        >
+                            <View style={styles.markerWrapper}>
+                                {/* Label clicável acima do pin */}
+                                <TouchableOpacity
+                                    style={[styles.label, { borderColor: color, backgroundColor: '#fff' }]}
+                                    onPress={() => handlePinPress(index)}
+                                    activeOpacity={0.75}
+                                >
+                                    <Text style={[styles.labelText, { color }]}>
+                                        {index + 1}. {point.name.length > 14 ? point.name.slice(0, 14) + '…' : point.name}
+                                    </Text>
+                                    <Text style={[styles.labelSub, { color }]}>ver no itinerário ↗</Text>
+                                </TouchableOpacity>
+
+                                {/* Pin com ícone e número */}
+                                <View style={styles.pinContainer}>
+                                    <MaterialIcons name="location-on" size={42} color={color} />
+                                    <View style={[styles.numberBadge, { backgroundColor: color }]}>
+                                        <Text style={styles.numberText}>{index + 1}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        </Marker>
+                    );
+                })}
+            </MapView>
+        </View>
+    );
+};
+
+export default Mapa;
+
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    map: { flex: 1 },
+
+    originWrapper: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    originDot: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#023665',
+        borderWidth: 3,
+        borderColor: '#fff',
+        shadowColor: '#000',
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    originLabel: {
+        backgroundColor: '#023665',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+    },
+    originLabelText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+    },
+
+    markerWrapper: {
+        alignItems: 'center',
+    },
+    label: {
+        borderWidth: 1.5,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        marginBottom: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 4,
+        maxWidth: 160,
+    },
+    labelText: {
+        fontSize: 12,
+        fontWeight: '700',
+        textAlign: 'center',
+    },
+    labelSub: {
+        fontSize: 10,
+        fontWeight: '500',
+        textAlign: 'center',
+        opacity: 0.8,
+        marginTop: 1,
+    },
+
+    pinContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 42,
+        height: 42,
+    },
+    numberBadge: {
+        position: 'absolute',
+        top: 5,
+        width: 17,
+        height: 17,
+        borderRadius: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#fff',
+    },
+    numberText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 10,
+    },
+});

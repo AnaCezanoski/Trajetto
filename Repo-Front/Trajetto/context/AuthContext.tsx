@@ -9,6 +9,7 @@ interface AuthContextData {
   login: (data: LoginRequest) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -63,8 +64,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await api.post('/user/create', data);
   };
 
+  const refreshUser = async () => {
+    const response = await api.get('/user/me');
+    const freshUser = response.data as User;
+    await AsyncStorage.setItem('user', JSON.stringify(freshUser));
+    setUser(freshUser);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

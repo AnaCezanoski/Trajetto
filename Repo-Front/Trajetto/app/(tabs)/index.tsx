@@ -1,240 +1,360 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import GenerateItineraryFlow from '@/components/GenerateItineraryFlow';
 import { useAuth } from '../../context/AuthContext';
-import { useItineraryStore } from './../../hooks/itineraryStore';
+import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
 
-export default function HomeScreen() {
-  const { user, logout } = useAuth();
+const PRIMARY = '#023665';
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year}`;
+};
+
+const formatTime = (time: string) => time?.slice(0, 5) ?? '';
+
+export default function RoteirosTab() {
+  const { user } = useAuth();
   const router = useRouter();
-  const { itinerary, fetchItinerary } = useItineraryStore();
+  const { itinerary, loading, fetchItinerary, deleteItinerary } = useItineraryStore();
+  const [deleting, setDeleting] = useState(false);
+  const [showGenerate, setShowGenerate] = useState(false);
 
   useEffect(() => {
-    if (!user) return
-    fetchItinerary(user.id)
-  }, [user])
+    if (user?.id) fetchItinerary(user.id);
+  }, [user]);
 
-  const formatTime = (time: string) => {
-    return time.slice(0, 5);
+  const handleDelete = () => {
+    if (!itinerary || !user) return;
+    Alert.alert(
+      'Excluir roteiro',
+      'Tem certeza que deseja excluir este roteiro? Essa ação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteItinerary(itinerary.id, user.id);
+            } catch {
+              Alert.alert('Erro', 'Não foi possível excluir o roteiro.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-
+    <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hello, {user?.firstName}</Text>
-          <Text style={styles.subtitle}>Ready to explore?</Text>
+          <Text style={styles.headerTitle}>Meus Roteiros</Text>
+          <Text style={styles.headerSub}>Olá, {user?.firstName} 👋</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/ProfileScreen')}>
-          <Text style={styles.actionIcon}>👤</Text>
+        <TouchableOpacity
+          style={styles.avatarBtn}
+          onPress={() => router.push('/(tabs)/perfil')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.avatarBtnText}>👤</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Card lista de usuários — só mostra se for admin */}
+      {/* Admin badge */}
       {user?.isAdmin && (
-        <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Registered Users</Text>
-          <Text style={styles.heroText}>
-            Manage registered users in Trajetto.
-          </Text>
-          <TouchableOpacity
-            style={styles.heroButton}
-            onPress={() => router.push('/UserListScreen')}>
-            <Text style={styles.heroButtonText}>View Users</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.adminBanner}
+          onPress={() => router.push('/UserListScreen')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.adminBannerIcon}>🛡️</Text>
+          <Text style={styles.adminBannerText}>Painel Administrador</Text>
+          <Text style={styles.adminBannerArrow}>›</Text>
+        </TouchableOpacity>
       )}
 
-
-
-      {itinerary ? (
-
-        <View style={styles.places}>
-          {itinerary.places.map((place, index) => (
-            <View key={index} style={styles.placeBubble}>
-              <View style={styles.placeBubbleContent}>
-                <View style={styles.placeBubbleHeader}>
-                  <Text style={[styles.placeBubbleTime, styles.placeBubbleTextHeader]}>{formatTime(place.estimatedVisitTime)}</Text>
-                  <Text style={styles.placeBubbleTextHeader}>{place.name}</Text>
-                </View>
-                <Text
-                  style={styles.placeAddress}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >{place.address}</Text>
-              </View>
-              <Text style={styles.placeDistance}>0.2km</Text>
-            </View>
-          ))}
-        </View>
-
-
-
-      )
-        : (
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {loading ? (
+          <View style={styles.centerState}>
+            <ActivityIndicator size="large" color={PRIMARY} />
+            <Text style={styles.stateText}>Carregando roteiros...</Text>
+          </View>
+        ) : itinerary ? (
           <>
-            {/* Card principal */}
-            <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>Traveler Profile Test</Text>
-              <Text style={styles.heroText}>
-                Discover your traveler profile and create personalized itineraries.
-              </Text>
-              <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
-                <Text style={styles.heroButtonText}>Start Now</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.sectionLabel}>ROTEIRO ATIVO</Text>
 
-            <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>Generate Travel Itinerary</Text>
-              <Text style={styles.heroText}>
-                Discover personalized destinations based on your traveler profile.
+            {/* Card clicável para abrir o roteiro */}
+            <TouchableOpacity
+              style={styles.itineraryCard}
+              onPress={() => router.push('/(itinerary)/itinerario')}
+              activeOpacity={0.9}
+            >
+              {/* Cabeçalho do card */}
+              <View style={styles.itineraryCardHeader}>
+                <View style={styles.activeBadge}>
+                  <View style={styles.activeDot} />
+                  <Text style={styles.activeBadgeText}>Ativo</Text>
+                </View>
+                <Text style={styles.itineraryDates}>
+                  {formatDate(itinerary.startDate)} → {formatDate(itinerary.endDate)}
+                </Text>
+              </View>
+
+              <View style={styles.titleRow}>
+                <Text style={[styles.itineraryCardTitle, { flex: 1 }]} numberOfLines={1}>
+                  📍 {itinerary.places[0]?.name ?? 'Roteiro'}
+                </Text>
+                <Text style={styles.chevron}>›</Text>
+              </View>
+
+              <Text style={styles.itineraryCardSub}>
+                {itinerary.places.length} paradas ·{' '}
+                {Math.ceil(
+                  (new Date(itinerary.endDate).getTime() - new Date(itinerary.startDate).getTime()) /
+                    (1000 * 60 * 60 * 24)
+                ) + 1}{' '}
+                dias
               </Text>
-              <TouchableOpacity style={styles.heroButton}>
-                <Text style={styles.heroButtonText}>Start Now</Text>
-              </TouchableOpacity>
-            </View>
+
+              {/* Timeline resumida */}
+              <View style={styles.timeline}>
+                {itinerary.places
+                  .slice()
+                  .sort((a, b) => a.orderIndex - b.orderIndex)
+                  .map((place, idx) => (
+                    <View key={idx} style={styles.timelineItem}>
+                      <View style={styles.timelineLeft}>
+                        <View style={[styles.timelineDot, { backgroundColor: idx === 0 ? PRIMARY : '#4a90d9' }]} />
+                        {idx < itinerary.places.length - 1 && <View style={styles.timelineLine} />}
+                      </View>
+                      <View style={styles.timelineContent}>
+                        <Text style={styles.timelineTime}>{formatTime(place.estimatedVisitTime)}</Text>
+                        <Text style={styles.timelineName} numberOfLines={1}>{place.name}</Text>
+                        <Text style={styles.timelineAddress} numberOfLines={1}>{place.address}</Text>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            </TouchableOpacity>
+
+            {/* Botão deletar separado do card */}
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={handleDelete}
+              disabled={deleting}
+              activeOpacity={0.8}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color="#EF4444" />
+              ) : (
+                <>
+                  <Text style={styles.deleteBtnIcon}>🗑️</Text>
+                  <Text style={styles.deleteBtnText}>Excluir roteiro</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🗺️</Text>
+            <Text style={styles.emptyTitle}>Nenhum roteiro ainda</Text>
+            <Text style={styles.emptyDesc}>
+              Crie seu primeiro roteiro personalizado e comece a explorar o mundo.
+            </Text>
+          </View>
         )}
 
-      {/* Card principal */}
-      <View style={[styles.heroCard, {marginTop: 20}]}>
-        <Text style={styles.exploreEmoji}>🧾</Text>
-        <Text style={styles.heroTitle}>Traveler Profile Test</Text>
-        <Text style={styles.heroText}>
-          Discover your traveler profile and create personalized itineraries.
-        </Text>
-        <TouchableOpacity style={styles.heroButton} onPress={() => router.push('/TravelerTestScreen')}>
-          <Text style={styles.heroButtonText}>Start Now</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Botão Gerar Roteiro */}
+        <View style={styles.generateSection}>
+          <Text style={styles.generateLabel}>Quer um novo roteiro?</Text>
+          <TouchableOpacity
+            style={styles.generateBtn}
+            activeOpacity={0.85}
+            onPress={() => setShowGenerate(true)}
+          >
+            <Text style={styles.generateBtnIcon}>✨</Text>
+            <Text style={styles.generateBtnTitle}>Gerar Roteiro</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
-      <View style={styles.heroCard}>
-        <Text style={styles.exploreEmoji}>✈️</Text>
-        <Text style={styles.heroTitle}>Generate Travel Itinerary</Text>
-        <Text style={styles.heroText}>
-          Discover personalized destinations based on your traveler profile.
-        </Text>
-        <TouchableOpacity style={styles.heroButton}>
-          <Text style={styles.heroButtonText}>Start Now</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ✅ Card novo — Explorar Pontos Turísticos */}
-      <View style={[styles.heroCard, styles.exploreCard]}>
-        <Text style={styles.exploreEmoji}>🗺️</Text>
-        <Text style={styles.heroTitle}>Explore Tourist Spots</Text>
-        <Text style={styles.heroText}>
-          Search for tourist attractions, museums, monuments and more in any city.
-        </Text>
-        <TouchableOpacity
-          style={styles.heroButton}
-          onPress={() => router.push('../ExploreScreen')}>
-          <Text style={[styles.heroButtonText, styles.exploreButtonText]}>Explore Now</Text>
-        </TouchableOpacity>
-      </View>
-
-    </ScrollView>
+      <GenerateItineraryFlow
+        visible={showGenerate}
+        onClose={() => setShowGenerate(false)}
+        onAccept={(itinerary: Itinerary) => {
+          setShowGenerate(false);
+          router.push('/(itinerary)/itinerario');
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  content: { padding: 24, paddingTop: 60 },
+  safe: { flex: 1, backgroundColor: '#f4f6f9' },
+
   header: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: PRIMARY,
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
   },
-  greeting: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
-  subtitle: { fontSize: 14, color: '#666', marginTop: 2 },
-  logout: { color: '#EF4444', fontWeight: 'bold' },
-  heroCard: {
-    backgroundColor: '#023665', borderRadius: 16,
-    padding: 24, marginBottom: 32,
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  avatarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
+  avatarBtnText: { fontSize: 22 },
 
-  exploreCard: {
-    backgroundColor: '#023665',
-  },
-  exploreEmoji: {
-    fontSize: 32, marginBottom: 8,
-  },
-  exploreButtonText: {
-    color: '#023665',
-  },
-
-  heroTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 8 },
-  heroText: { fontSize: 14, color: '#c7d2fe', marginBottom: 20, lineHeight: 20 },
-  heroButton: {
-    backgroundColor: '#fff', borderRadius: 8,
-    padding: 12, alignItems: 'center',
-  },
-  heroButtonText: { color: '#023665', fontWeight: 'bold', fontSize: 15 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 12 },
-  quickActions: { flexDirection: 'row', gap: 12 },
-  actionCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 12,
-    padding: 20, alignItems: 'center', gap: 8,
-    shadowColor: '#000', shadowOpacity: 0.05,
-    shadowRadius: 4, elevation: 2,
-  },
-  actionIcon: { fontSize: 28 },
-  actionLabel: { fontSize: 13, fontWeight: '600', color: '#444' },
-  banner: {
-    width: 600, height: 300,
-    resizeMode: 'contain', alignSelf: 'center',
-  },
-
-  places: {
-    flexDirection: 'column',
-    gap: 12,
-  },
-  placeBubble: {
-    width: '100%',
-    padding: 8,
+  adminBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'black',
-    borderRadius: 8,
-    flex: 1,
-    minWidth: 0,
+    backgroundColor: '#fff3cd',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ffeaa0',
+  },
+  adminBannerIcon: { fontSize: 18, marginRight: 10 },
+  adminBannerText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#7a5f00' },
+  adminBannerArrow: { fontSize: 20, color: '#c0a000' },
 
+  content: { padding: 20, paddingBottom: 32 },
+
+  centerState: { alignItems: 'center', paddingTop: 60 },
+  stateText: { marginTop: 16, fontSize: 15, color: '#888' },
+
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a9ab0',
+    letterSpacing: 0.8,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
-  placeAddress: {
-    fontSize: 16,
-    color: '#666',
-    flexShrink: 1,
+
+  itineraryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
-  placeDistance: {
-    marginLeft: 8,
-    minWidth: 0,
-  },
-  placeBubbleHeader: {
+  itineraryCardHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    flex: 1,
-    minWidth: 0,
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  placeBubbleTextHeader: {
-    fontSize: 18,
+  activeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f5e9',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 6,
   },
-  placeBubbleTime: {
-    fontWeight: 'bold',
-  },
-  placeBubbleContent: {
-    flexDirection: 'column',
-    flex: 1,
-    minWidth: 0,
+  activeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#43a047' },
+  activeBadgeText: { fontSize: 12, fontWeight: '700', color: '#2e7d32' },
+  itineraryDates: { fontSize: 12, color: '#8a9ab0', fontWeight: '500' },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  itineraryCardTitle: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
+  chevron: { fontSize: 22, color: '#c0ccd8', marginLeft: 8 },
+  itineraryCardSub: { fontSize: 13, color: '#8a9ab0', marginBottom: 20 },
 
-  }
+  timeline: { gap: 0 },
+  timelineItem: { flexDirection: 'row', minHeight: 56 },
+  timelineLeft: { alignItems: 'center', width: 20, marginRight: 14 },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
+  timelineLine: { flex: 1, width: 2, backgroundColor: '#e0e8f0', marginTop: 4 },
+  timelineContent: { flex: 1, paddingBottom: 16 },
+  timelineTime: { fontSize: 13, fontWeight: '700', color: PRIMARY, marginBottom: 2 },
+  timelineName: { fontSize: 15, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
+  timelineAddress: { fontSize: 12, color: '#8a9ab0' },
+
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#fca5a5',
+    borderRadius: 12,
+    paddingVertical: 13,
+    backgroundColor: '#fff5f5',
+    marginBottom: 24,
+    minHeight: 48,
+  },
+  deleteBtnIcon: { fontSize: 16 },
+  deleteBtnText: { fontSize: 15, fontWeight: '600', color: '#EF4444' },
+
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyEmoji: { fontSize: 64, marginBottom: 20 },
+  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10 },
+  emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center', lineHeight: 22 },
+
+  generateSection: { marginTop: 8 },
+  generateLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a9ab0',
+    letterSpacing: 0.8,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+  },
+  generateBtn: {
+    backgroundColor: PRIMARY,
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    shadowColor: PRIMARY,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  generateBtnIcon: { fontSize: 24 },
+  generateBtnTitle: { fontSize: 17, fontWeight: 'bold', color: '#fff' },
 });
