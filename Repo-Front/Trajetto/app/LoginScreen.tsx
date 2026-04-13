@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { api } from '../services/api';
 import TrajettoLogo from '../components/TrajettoLogo';
 import Svg, { Path } from 'react-native-svg';
+import { validateEmail } from '../utils/validators';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -13,9 +14,28 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const inputStyle = (field: string) => [
+      styles.input,
+      errors[field] ? styles.inputError : null,
+    ];
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert('Fill in all the fields');
+    const newErrors: Record<string, string> = {};
+
+    const emailError = validateEmail(email);
+    if (emailError) newErrors.email = emailError;
+
+    if (!password) newErrors.password = 'Password is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+
     try {
       setLoading(true);
       await login({ email, password });
@@ -56,6 +76,16 @@ export default function LoginScreen() {
     },
     passwordInput: { flex: 1, paddingVertical: 12, fontSize: 16 },
     eyeBtn: { paddingLeft: 8, justifyContent: 'center', alignItems: 'center' },
+
+    inputError: {
+      borderColor: '#EF4444'
+    },
+    errorText: {
+      color: '#EF4444',
+      fontSize: 12,
+      marginBottom: 8,
+      marginLeft: 4
+    },
   });
 
   return (
@@ -71,8 +101,15 @@ export default function LoginScreen() {
           <TrajettoLogo width={600} height={300} />
         </View>
 
-        <TextInput style={styles.input} placeholder="Email" value={email}
-          onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <TextInput
+          style={inputStyle('email')}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <View style={styles.passwordWrapper}>
           <TextInput
@@ -101,6 +138,7 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
         </View>
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Login'}</Text>

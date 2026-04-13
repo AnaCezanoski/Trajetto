@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
 import RegisterIllustration from '../components/RegisterIllustration';
 import Svg, { Path } from 'react-native-svg';
+import { maskName, maskBirthDate, maskTelephone, validateRegisterForm, toBirthDateISO, passwordStrength } from '../utils/validators';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function RegisterScreen() {
   const [telephone, setTelephone] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCountries, setShowCountries] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const countries = [
     'Argentina', 'Australia', 'Brazil', 'Canada', 'Chile',
@@ -25,29 +27,18 @@ export default function RegisterScreen() {
     'Mexico', 'Portugal', 'Spain', 'United Kingdom', 'United States',
   ];
 
-  const handleBirthDate = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    if (cleaned.length >= 3 && cleaned.length <= 4) {
-      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    } else if (cleaned.length >= 5) {
-      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-    }
-    setBirthDate(formatted);
-  };
+  const strength = passwordStrength(password);
 
   const handleRegister = async () => {
-    if (!firstName || !lastName || !email || !password || !birthDate || !country || !telephone) {
-      return Alert.alert('Attention', 'Please fill in all fields');
+    const errs = validateRegisterForm({ firstName, lastName, birthDate, telephone, email, country, password });
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
     }
-    const [day, month, year] = birthDate.split('/');
-    if (!day || !month || !year || year.length < 4) {
-      return Alert.alert('Attention', 'Enter a valid date (DD/MM/YYYY)');
-    }
-    const formattedDate = `${year}-${month}-${day}`;
+    setErrors({});
     try {
       setLoading(true);
-      await register({ firstName, lastName, email, password, birthDate: formattedDate, country, telephone });
+      await register({ firstName, lastName, email, password, birthDate: toBirthDateISO(birthDate), country, telephone });
       Alert.alert('Success', 'Account created! Please log in');
       router.push('/LoginScreen');
     } catch {
@@ -57,65 +48,83 @@ export default function RegisterScreen() {
     }
   };
 
+  const inputStyle = (field: string) => [
+    styles.input,
+    errors[field] ? styles.inputError : null,
+  ];
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+
         <View style={{ alignItems: 'center', marginBottom: 24 }}>
           <RegisterIllustration width={400} height={177} />
         </View>
 
         <Text style={styles.title}>Create Account</Text>
 
+        {/* First Name */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('firstName')}
           placeholder="First Name"
           value={firstName}
-          onChangeText={setFirstName}
+          onChangeText={(t) => setFirstName(maskName(t))}
         />
+        {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
 
+        {/* Last Name */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('lastName')}
           placeholder="Last Name"
           value={lastName}
-          onChangeText={setLastName}
+          onChangeText={(t) => setLastName(maskName(t))}
         />
+        {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
 
+        {/* Birth Date + Phone */}
         <View style={styles.row}>
-          <TextInput
-            style={[styles.input, styles.rowInput]}
-            placeholder="Birth Date"
-            value={birthDate}
-            onChangeText={handleBirthDate}
-            keyboardType="numeric"
-            maxLength={10}
-          />
-          <TextInput
-            style={[styles.input, styles.rowInput]}
-            placeholder="Phone Number"
-            value={telephone}
-            onChangeText={setTelephone}
-            keyboardType="phone-pad"
-          />
+          <View style={styles.rowInput}>
+            <TextInput
+              style={[inputStyle('birthDate'), { marginBottom: 0 }]}
+              placeholder="Birth Date"
+              value={birthDate}
+              onChangeText={(t) => setBirthDate(maskBirthDate(t))}
+              keyboardType="numeric"
+              maxLength={10}
+            />
+            {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
+          </View>
+
+          <View style={styles.rowInput}>
+            <TextInput
+              style={[inputStyle('telephone'), { marginBottom: 0 }]}
+              placeholder="Phone Number"
+              value={telephone}
+              onChangeText={(t) => setTelephone(maskTelephone(t))}
+              keyboardType="phone-pad"
+              maxLength={15}
+            />
+            {errors.telephone && <Text style={styles.errorText}>{errors.telephone}</Text>}
+          </View>
         </View>
 
+        <View style={{ marginBottom: 12 }} />
+
+        {/* Email */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('email')}
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
         />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
+        {/* Country */}
         <View style={styles.dropdownWrapper}>
           <TouchableOpacity
-            style={styles.input}
+            style={[styles.input, errors.country ? styles.inputError : null]}
             onPress={() => setShowCountries(!showCountries)}
             activeOpacity={0.7}
           >
@@ -123,6 +132,7 @@ export default function RegisterScreen() {
               {country ? country : 'Country'}
             </Text>
           </TouchableOpacity>
+          {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
 
           {showCountries && (
             <View style={styles.dropdownList}>
@@ -131,10 +141,7 @@ export default function RegisterScreen() {
                   <TouchableOpacity
                     key={`country-${index}`}
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      setCountry(item);
-                      setShowCountries(false);
-                    }}
+                    onPress={() => { setCountry(item); setShowCountries(false); }}
                   >
                     <Text style={styles.dropdownItemText}>{item}</Text>
                   </TouchableOpacity>
@@ -144,7 +151,8 @@ export default function RegisterScreen() {
           )}
         </View>
 
-        <View style={styles.passwordWrapper}>
+        {/* Password */}
+        <View style={[styles.passwordWrapper, errors.password ? styles.inputError : null]}>
           <TextInput
             style={styles.passwordInput}
             placeholder="Password"
@@ -152,11 +160,7 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
           />
-          <TouchableOpacity
-            onPress={() => setShowPassword(!showPassword)}
-            style={styles.eyeBtn}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn} activeOpacity={0.7}>
             {showPassword ? (
               <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
                 <Path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z"
@@ -174,11 +178,20 @@ export default function RegisterScreen() {
             )}
           </TouchableOpacity>
         </View>
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+        {/* Indicador de força */}
+        {password.length > 0 && (
+          <View style={styles.passwordStrength}>
+            <View style={[styles.strengthBar, strength.length    ? styles.strengthOk : styles.strengthWeak]}/>
+            <View style={[styles.strengthBar, strength.uppercase && strength.lowercase ? styles.strengthOk : styles.strengthWeak]}/>
+            <View style={[styles.strengthBar, strength.number    ? styles.strengthOk : styles.strengthWeak]}/>
+            <View style={[styles.strengthBar, strength.special   ? styles.strengthOk : styles.strengthWeak]}/>
+          </View>
+        )}
 
         <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing Up...' : 'Sign Up'}
-          </Text>
+          <Text style={styles.buttonText}>{loading ? 'Signing Up...' : 'Sign Up'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/LoginScreen')} style={{ marginTop: 16 }}>
@@ -193,15 +206,17 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: { padding: 24, backgroundColor: '#fff', flexGrow: 1 },
   title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 24, color: '#023665' },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16 },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 4, fontSize: 16 },
+  inputError: { borderColor: '#EF4444' },
+  errorText: { color: '#EF4444', fontSize: 12, marginBottom: 8, marginLeft: 4 },
   button: { backgroundColor: '#023665', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 8 },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   link: { textAlign: 'center', color: '#023665' },
   inputText: { fontSize: 16, color: '#000', paddingVertical: 2 },
   inputPlaceholder: { fontSize: 16, color: '#aaa', paddingVertical: 2 },
-  row: { flexDirection: 'row', gap: 10, marginBottom: 0 },
-  rowInput: { flex: 1, marginBottom: 12 },
-  dropdownWrapper: { position: 'relative', zIndex: 10, marginBottom: 12 },
+  row: { flexDirection: 'row', gap: 10 },
+  rowInput: { flex: 1 },
+  dropdownWrapper: { position: 'relative', zIndex: 10, marginBottom: 4 },
   dropdownList: {
     position: 'absolute', top: 50, left: 0, right: 0,
     backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
@@ -214,8 +229,12 @@ const styles = StyleSheet.create({
   passwordWrapper: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 8,
-    marginBottom: 12, paddingHorizontal: 12,
+    marginBottom: 4, paddingHorizontal: 12,
   },
   passwordInput: { flex: 1, paddingVertical: 12, fontSize: 16 },
   eyeBtn: { paddingLeft: 8, justifyContent: 'center', alignItems: 'center' },
+  passwordStrength: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  strengthBar: { flex: 1, height: 4, borderRadius: 2 },
+  strengthOk: { backgroundColor: '#22c55e' },
+  strengthWeak: { backgroundColor: '#ddd' },
 });

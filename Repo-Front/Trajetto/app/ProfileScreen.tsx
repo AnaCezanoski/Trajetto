@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { maskName, maskBirthDate, maskTelephone, validateProfileForm, toBirthDateISO, fromBirthDateISO } from '../utils/validators';
 
 export default function ProfileScreen() {
   const { logout } = useAuth();
@@ -13,6 +14,7 @@ export default function ProfileScreen() {
   const [telephone, setTelephone] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCountries, setShowCountries] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const countries = [
     'Argentina', 'Australia', 'Brazil', 'Canada', 'Chile',
@@ -23,111 +25,115 @@ export default function ProfileScreen() {
   useEffect(() => {
     api.get('/user/me').then((res) => {
       const u = res.data;
-      setFirstName(u.firstName);
-      setLastName(u.lastName);
-      setEmail(u.email);
-      // Converte aaaa-mm-dd → dd/mm/aaaa para exibir
-      if (u.birthDate) {
-        const [year, month, day] = u.birthDate.split('-');
-        setBirthDate(`${day}/${month}/${year}`);
-      }
-      setCountry(u.country);
-      setTelephone(u.telephone);
+      setFirstName(u.firstName ?? '');
+      setLastName(u.lastName ?? '');
+      setEmail(u.email ?? '');
+      setBirthDate(u.birthDate ? fromBirthDateISO(u.birthDate) : '');
+      setCountry(u.country ?? '');
+      setTelephone(u.telephone ?? '');
     });
   }, []);
 
-  const handleBirthDate = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    if (cleaned.length >= 3 && cleaned.length <= 4) {
-      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    } else if (cleaned.length >= 5) {
-      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-    }
-    setBirthDate(formatted);
-  };
-
   const handleUpdate = async () => {
-    const [day, month, year] = birthDate.split('/');
-    if (!day || !month || !year || year.length < 4) {
-      return Alert.alert('Attention', 'Enter a valid date (DD/MM/YYYY)');
+    const errs = validateProfileForm({ firstName, lastName, birthDate, telephone, email, country });
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
     }
-    const formattedDate = `${year}-${month}-${day}`;
-
+    setErrors({});
     try {
       setLoading(true);
-      const response = await api.put('/user/me', {
+      await api.put('/user/me', {
         firstName, lastName, email,
-        birthDate: formattedDate,
+        birthDate: toBirthDateISO(birthDate),
         country, telephone,
       });
-      console.log('RESPONSE:', JSON.stringify(response.data));
       Alert.alert('Success', 'Profile updated!');
     } catch (error: any) {
       console.log('ERROR UPDATE:', JSON.stringify(error.response?.data));
-      console.log('STATUS:', error.response?.status);
+      console.log('ERROR UPDATE FULL:', error);
+      console.log('ERROR DATA:', error.response?.data);
+      console.log('ERROR STATUS:', error.response?.status);
       Alert.alert('Error', 'Unable to update');
     } finally {
       setLoading(false);
     }
   };
 
+  const inputStyle = (field: string) => [
+    styles.input,
+    errors[field] ? styles.inputError : null,
+  ];
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+
         <Text style={styles.title}>My Profile</Text>
         <Text style={styles.actionIcon}>👤</Text>
 
+        {/* First Name */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('firstName')}
           placeholder="First Name"
           value={firstName}
-          onChangeText={setFirstName}
+          onChangeText={(t) => setFirstName(maskName(t))}
         />
+        {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
 
+        {/* Last Name */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('lastName')}
           placeholder="Last Name"
           value={lastName}
-          onChangeText={setLastName}
+          onChangeText={(t) => setLastName(maskName(t))}
         />
+        {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
 
+        {/* Birth Date + Phone */}
         <View style={styles.row}>
-          <TextInput
-            style={[styles.input, styles.rowInput]}
-            placeholder="DD/MM/YYYY"
-            value={birthDate}
-            onChangeText={handleBirthDate}
-            keyboardType="numeric"
-            maxLength={10}
-          />
-          <TextInput
-            style={[styles.input, styles.rowInput]}
-            placeholder="Phone Number"
-            value={telephone}
-            onChangeText={setTelephone}
-            keyboardType="phone-pad"
-          />
+          <View style={styles.rowInput}>
+            <TextInput
+              style={[inputStyle('birthDate'), { marginBottom: 0 }]}
+              placeholder="DD/MM/YYYY"
+              value={birthDate}
+              onChangeText={(t) => setBirthDate(maskBirthDate(t))}
+              keyboardType="numeric"
+              maxLength={10}
+            />
+            {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
+          </View>
+
+          <View style={styles.rowInput}>
+            <TextInput
+              style={[inputStyle('telephone'), { marginBottom: 0 }]}
+              placeholder="(00) 00000-0000"
+              value={telephone}
+              onChangeText={(t) => setTelephone(maskTelephone(t))}
+              keyboardType="phone-pad"
+              maxLength={15}
+            />
+            {errors.telephone && <Text style={styles.errorText}>{errors.telephone}</Text>}
+          </View>
         </View>
 
+        <View style={{ marginBottom: 12 }} />
+
+        {/* Email */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('email')}
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
         />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
+        {/* Country */}
         <View style={styles.dropdownWrapper}>
           <TouchableOpacity
-            style={styles.input}
+            style={[styles.input, errors.country ? styles.inputError : null]}
             onPress={() => setShowCountries(!showCountries)}
             activeOpacity={0.7}
           >
@@ -135,6 +141,7 @@ export default function ProfileScreen() {
               {country ? country : 'Country'}
             </Text>
           </TouchableOpacity>
+          {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
 
           {showCountries && (
             <View style={styles.dropdownList}>
@@ -143,10 +150,7 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     key={`country-${index}`}
                     style={styles.dropdownItem}
-                    onPress={() => {
-                      setCountry(item);
-                      setShowCountries(false);
-                    }}
+                    onPress={() => { setCountry(item); setShowCountries(false); }}
                   >
                     <Text style={styles.dropdownItemText}>{item}</Text>
                   </TouchableOpacity>
@@ -173,16 +177,18 @@ const styles = StyleSheet.create({
   container: { padding: 24, backgroundColor: '#fff', flexGrow: 1 },
   title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8, color: '#023665' },
   actionIcon: { textAlign: 'center', fontSize: 80, marginBottom: 24 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16 },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 4, fontSize: 16 },
+  inputError: { borderColor: '#EF4444' },
+  errorText: { color: '#EF4444', fontSize: 12, marginBottom: 8, marginLeft: 4 },
   button: { backgroundColor: '#023665', padding: 14, borderRadius: 8, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   logoutBtn: { marginTop: 20, alignItems: 'center' },
   logoutText: { color: '#EF4444', fontWeight: 'bold' },
   inputText: { fontSize: 16, color: '#000', paddingVertical: 2 },
   inputPlaceholder: { fontSize: 16, color: '#aaa', paddingVertical: 2 },
-  row: { flexDirection: 'row', gap: 10, marginBottom: 0 },
-  rowInput: { flex: 1, marginBottom: 12 },
-  dropdownWrapper: { position: 'relative', zIndex: 10, marginBottom: 12 },
+  row: { flexDirection: 'row', gap: 10 },
+  rowInput: { flex: 1 },
+  dropdownWrapper: { position: 'relative', zIndex: 10, marginBottom: 4 },
   dropdownList: {
     position: 'absolute', top: 50, left: 0, right: 0,
     backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',

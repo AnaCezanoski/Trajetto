@@ -5,21 +5,36 @@ import {
 } from 'react-native';
 import { api } from '../services/api';
 import { useRouter } from 'expo-router';
+import { validateEmail } from '../utils/validators'; // ✅ IMPORT CORRETO
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const inputStyle = (field: string) => [
+    styles.input,
+    errors[field] ? styles.inputError : null,
+  ];
 
   const handleSend = async () => {
-    if (!email) {
-      return Alert.alert('Attention', 'Enter your email');
+    const error = validateEmail(email);
+
+    if (error) {
+      setErrors({ email: error });
+      return;
     }
+
+    setErrors({});
 
     try {
       setLoading(true);
 
-      await api.post('/user/password/forgot', { email });
+      await api.post('/user/password/forgot', {
+        email: email.trim().toLowerCase() // ✅ PADRONIZA IGUAL REGISTER
+      });
 
       Alert.alert(
         'Code sent!',
@@ -30,13 +45,14 @@ export default function ForgotPasswordScreen() {
             onPress: () =>
               router.push({
                 pathname: '/ResetPasswordScreen',
-                params: { email }
+                params: { email: email.trim().toLowerCase() }
               })
           }
         ]
       );
 
-    } catch {
+    } catch (error: any) {
+      console.log('ERROR FORGOT:', error?.response?.data);
       Alert.alert('Error', 'Could not send code. Check if the email is registered.');
     } finally {
       setLoading(false);
@@ -55,14 +71,19 @@ export default function ForgotPasswordScreen() {
           Enter your email and we'll send you a verification code.
         </Text>
 
+        {/* EMAIL */}
         <TextInput
-          style={styles.input}
+          style={inputStyle('email')}
           placeholder="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(t) => {
+            setEmail(t);
+            if (errors.email) setErrors(prev => ({ ...prev, email: '' })); // ✅ limpa erro ao digitar
+          }}
           keyboardType="email-address"
           autoCapitalize="none"
         />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
         <TouchableOpacity
           style={styles.button}
@@ -126,5 +147,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     color: '#023665'
-  }
+  },
+  inputError: { borderColor: '#EF4444' },
+    errorText: { color: '#EF4444', fontSize: 12, marginBottom: 8, marginLeft: 4 },
 });

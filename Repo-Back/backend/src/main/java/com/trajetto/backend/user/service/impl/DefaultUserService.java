@@ -73,14 +73,28 @@ public class DefaultUserService implements UserService {
     public UserModel updateUser(UserModel userModel) {
         return userRepository.findById(userModel.getId())
                 .map(existingUser -> {
-                    existingUser.setFirstName(capitalizeWords(userModel.getFirstName().trim()));
-                    existingUser.setLastName(capitalizeWords(userModel.getLastName().trim()));
-                    existingUser.setCountry(capitalizeWords(userModel.getCountry().trim()));
-                    existingUser.setEmail(userModel.getEmail().trim().toLowerCase());
-                    existingUser.setTravelerProfile(userModel.getTravelerProfile().trim());
-                    existingUser.setTelephone(userModel.getTelephone().trim());
-                    existingUser.setBirthDate(userModel.getBirthDate());
-                    //existingUser.setProfilePictureUrl(userModel.getProfilePictureUrl());
+
+                    if (userModel.getFirstName() != null)
+                        existingUser.setFirstName(capitalizeWords(userModel.getFirstName().trim()));
+
+                    if (userModel.getLastName() != null)
+                        existingUser.setLastName(capitalizeWords(userModel.getLastName().trim()));
+
+                    if (userModel.getCountry() != null)
+                        existingUser.setCountry(capitalizeWords(userModel.getCountry().trim()));
+
+                    if (userModel.getEmail() != null)
+                        existingUser.setEmail(userModel.getEmail().trim().toLowerCase());
+
+                    if (userModel.getTelephone() != null)
+                        existingUser.setTelephone(userModel.getTelephone().trim());
+
+                    if (userModel.getTravelerProfile() != null)
+                        existingUser.setTravelerProfile(userModel.getTravelerProfile().trim());
+
+                    if (userModel.getBirthDate() != null)
+                        existingUser.setBirthDate(userModel.getBirthDate());
+
                     return userRepository.save(existingUser);
                 })
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado com ID: " + userModel.getId()));
