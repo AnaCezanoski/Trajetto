@@ -18,9 +18,8 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
-    const inLogin    = segments[0] === 'LoginScreen';
-    const inRegister = segments[0] === 'RegisterScreen';
-    const inPublic   = inLogin || inRegister;
+    const publicRoutes = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen'];
+    const inPublic = publicRoutes.includes(segments[0]);
 
     if (!user && !inPublic) {
       router.replace('/LoginScreen');
@@ -41,6 +40,7 @@ function RootLayoutNav() {
         <Stack.Screen name="RegisterScreen"  options={{ title: 'Criar Conta' }} />
         <Stack.Screen name="UserListScreen"  options={{ title: 'Usuários' }} />
         <Stack.Screen name="UserDetailScreen" options={{ title: 'Editar Usuário' }} />
+        <Stack.Screen name="ForgotPasswordScreen" options={{ title: 'Forgot Password' }} />
         <Stack.Screen name="modal"           options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="auto" />

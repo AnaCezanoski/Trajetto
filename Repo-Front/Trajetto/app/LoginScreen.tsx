@@ -28,7 +28,6 @@ export default function LoginScreen() {
     }
   };
 
-  // ✅ styles AQUI dentro da função, antes do return
   const styles = StyleSheet.create({
     container: {
       flexGrow: 1,
@@ -106,7 +105,9 @@ export default function LoginScreen() {
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Login'}</Text>
         </TouchableOpacity>
-
+        <TouchableOpacity onPress={() => router.push('/ForgotPasswordScreen')}>
+          <Text style={styles.link}>Forgot your password?</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push('/RegisterScreen')}>
           <Text style={styles.link}>Don't have an account? Sign up</Text>
         </TouchableOpacity>
