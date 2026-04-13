@@ -13,10 +13,10 @@ O projeto está sendo desenvolvido como **Trabalho de Conclusão de Curso (TCC)*
 ## Equipe
 Projeto desenvolvido por:
 
-- **Ana Julia Rocha Cezanoski**
-- **Eduardo Nicolosi de Oliveira**
-- **Kauane Santana da Rosa**
-- **Lucas Nascimento da Silva**
+Ana Julia Rocha Cezanoski
+Eduardo Nicolosi de Oliveira
+Kauane Santana da Rosa
+Lucas Nascimento da Silva
 
 # Objetivos
 
