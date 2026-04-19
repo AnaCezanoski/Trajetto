@@ -87,7 +87,7 @@ useFocusEffect(
 
   if (!itinerary) {
     return (
-      <View style={styles.center}>
+      <View style={styles.emptyState}>
         <Text style={styles.emptyEmoji}>📋</Text>
         <Text style={styles.emptyTitle}>Sem itinerário</Text>
         <Text style={styles.emptyDesc}>Nenhum roteiro encontrado.</Text>
@@ -204,6 +204,14 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   loadingText: { marginTop: 16, fontSize: 15, color: '#888' },
+        emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+    backgroundColor: '#f9f9f9',
+    flex: 1,
+    justifyContent: 'center',
+  },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 },
   emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center' },

@@ -93,7 +93,7 @@ export default function RoteirosTab() {
       )}
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
@@ -192,7 +192,7 @@ export default function RoteirosTab() {
         )}
 
         {/* Botão Gerar Roteiro */}
-        <View style={styles.generateSection}>
+        <View style={[styles.generateSection, !itinerary ? { backgroundColor: '#f4f6f9', flex:1} : {}]}>
           <Text style={styles.generateLabel}>Quer um novo roteiro?</Text>
           <TouchableOpacity
             style={styles.generateBtn}
@@ -330,10 +330,13 @@ const styles = StyleSheet.create({
   deleteBtnIcon: { fontSize: 16 },
   deleteBtnText: { fontSize: 15, fontWeight: '600', color: '#EF4444' },
 
-  emptyState: {
+      emptyState: {
     alignItems: 'center',
     paddingVertical: 48,
     paddingHorizontal: 32,
+    backgroundColor: '#f4f6f9',
+    flex: 1,
+    justifyContent: 'center',
   },
   emptyEmoji: { fontSize: 64, marginBottom: 20 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10 },

@@ -64,7 +64,7 @@ export default function TabLayout() {
         options={{
           title: 'Trajetto',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="map.fill" color={color} />
+            <IconSymbol size={26} name="mappin.and.ellipse" color={color} />
           ),
         }}
       />

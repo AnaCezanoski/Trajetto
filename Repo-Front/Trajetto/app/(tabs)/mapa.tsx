@@ -154,6 +154,7 @@ const Mapa = () => {
     };
 
     return (
+        itinerary ? (
         <View style={styles.container}>
             <MapView
                 ref={mapRef}
@@ -223,6 +224,15 @@ const Mapa = () => {
                 })}
             </MapView>
         </View>
+        ) : (
+            <View style={styles.emptyState}>
+                        <Text style={styles.emptyEmoji}>🗺️</Text>
+                        <Text style={styles.emptyTitle}>Nenhum roteiro ainda</Text>
+                        <Text style={styles.emptyDesc}>
+                          Crie seu primeiro roteiro personalizado e comece a explorar o mundo.
+                        </Text>
+                      </View>
+        )
     );
 };
 
@@ -328,4 +338,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 10,
     },
+      emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+    backgroundColor: '#f9f9f9',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  emptyEmoji: { fontSize: 64, marginBottom: 20 },
+  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10 },
+  emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center', lineHeight: 22 },
+
 });
