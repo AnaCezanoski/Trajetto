@@ -1,8 +1,8 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
 import { useEffect } from 'react';
+import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -52,7 +52,6 @@ function RootLayoutNav() {
         <Stack.Screen name="TravelerTestScreen" options={{ headerShown: false }} />
         <Stack.Screen name="QuizScreen"       options={{ headerShown: false }} />
         <Stack.Screen name="QuizResultScreen" options={{ headerShown: false }} />
-        <Stack.Screen name="ProfileScreen"    options={{ title: 'Meu Perfil' }} />
         <Stack.Screen name="ExploreScreen"    options={{ title: 'Explorar' }} />
         <Stack.Screen name="SpotDetailScreen" options={{ title: 'Detalhe' }} />
         <Stack.Screen name="modal"            options={{ presentation: 'modal' }} />

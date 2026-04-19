@@ -1,3 +1,4 @@
+import GenerateItineraryFlow from '@/components/GenerateItineraryFlow';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -10,9 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import GenerateItineraryFlow from '@/components/GenerateItineraryFlow';
 import { useAuth } from '../../context/AuthContext';
+import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
+
 
 const PRIMARY = '#023665';
 
@@ -70,7 +72,7 @@ export default function RoteirosTab() {
         </View>
         <TouchableOpacity
           style={styles.avatarBtn}
-          onPress={() => router.push('/(tabs)/perfil')}
+          onPress={() => router.push('/perfil')}
           activeOpacity={0.8}
         >
           <Text style={styles.avatarBtnText}>👤</Text>
@@ -106,7 +108,7 @@ export default function RoteirosTab() {
             {/* Card clicável para abrir o roteiro */}
             <TouchableOpacity
               style={styles.itineraryCard}
-              onPress={() => router.push('/(itinerary)/itinerario')}
+              onPress={() => router.push('/itinerario')}
               activeOpacity={0.9}
             >
               {/* Cabeçalho do card */}
@@ -141,19 +143,24 @@ export default function RoteirosTab() {
                 {itinerary.places
                   .slice()
                   .sort((a, b) => a.orderIndex - b.orderIndex)
-                  .map((place, idx) => (
+                  .map((place, idx) => {
+
+                    const isPast = isPlacePast(itinerary.startDate, place.estimatedVisitTime);
+                    
+                    return (
                     <View key={idx} style={styles.timelineItem}>
                       <View style={styles.timelineLeft}>
-                        <View style={[styles.timelineDot, { backgroundColor: idx === 0 ? PRIMARY : '#4a90d9' }]} />
+                        <View style={[styles.timelineDot, isPast ? { backgroundColor: '#9aa4b2', opacity: 0.5 } : { backgroundColor: idx === 0 ? PRIMARY : '#4a90d9' }]} />
                         {idx < itinerary.places.length - 1 && <View style={styles.timelineLine} />}
                       </View>
-                      <View style={styles.timelineContent}>
+                      <View style={[styles.timelineContent, isPast && { opacity: 0.5 }]}>
                         <Text style={styles.timelineTime}>{formatTime(place.estimatedVisitTime)}</Text>
                         <Text style={styles.timelineName} numberOfLines={1}>{place.name}</Text>
                         <Text style={styles.timelineAddress} numberOfLines={1}>{place.address}</Text>
                       </View>
                     </View>
-                  ))}
+                  )
+})}
               </View>
             </TouchableOpacity>
 
@@ -203,7 +210,7 @@ export default function RoteirosTab() {
         onClose={() => setShowGenerate(false)}
         onAccept={(itinerary: Itinerary) => {
           setShowGenerate(false);
-          router.push('/(itinerary)/itinerario');
+          router.push('../itinerario');
         }}
       />
     </SafeAreaView>
@@ -211,7 +218,7 @@ export default function RoteirosTab() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f4f6f9' },
+  safe: { flex: 1, backgroundColor: '#023665' },
 
   header: {
     flexDirection: 'row',
@@ -249,7 +256,7 @@ const styles = StyleSheet.create({
   adminBannerText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#7a5f00' },
   adminBannerArrow: { fontSize: 20, color: '#c0a000' },
 
-  content: { padding: 20, paddingBottom: 32 },
+  content: { padding: 20, paddingBottom: 32, backgroundColor: '#f4f6f9' },
 
   centerState: { alignItems: 'center', paddingTop: 60 },
   stateText: { marginTop: 16, fontSize: 15, color: '#888' },

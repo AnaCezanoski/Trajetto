@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
@@ -10,6 +10,8 @@ const ACTIVE_TINT = '#ffffff';
 const INACTIVE_TINT = 'rgba(255,255,255,0.45)';
 
 export default function TabLayout() {
+  const router = useRouter();
+
   return (
     <Tabs
       initialRouteName="index"
@@ -40,7 +42,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Roteiros',
+          title: 'Início',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="calendar" color={color} />
           ),
@@ -48,17 +50,24 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="perfil"
+        name="mapa"
         options={{
-          title: 'Perfil',
+          title: 'Mapa',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="person.fill" color={color} />
+            <IconSymbol size={26} name="map.fill" color={color} />
           ),
         }}
       />
 
-      {/* Esconde a aba mapa do tab bar principal (mapa só existe na tela de roteiro) */}
-      <Tabs.Screen name="mapa" options={{ href: null }} />
+      <Tabs.Screen
+        name="itinerario"
+        options={{
+          title: 'Trajetto',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={26} name="map.fill" color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

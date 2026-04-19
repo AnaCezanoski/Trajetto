@@ -1,15 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import { PLACE_COLORS } from '@/constants/placeColors';
+import { useItineraryStore } from '@/hooks/itineraryStore';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { PLACE_COLORS } from '@/constants/placeColors';
-import { useItineraryStore } from '@/hooks/itineraryStore';
+import { isPlacePast } from '../utils/isPlacePast';
 
 const PRIMARY = '#023665';
 
@@ -23,6 +25,7 @@ const formatTime = (time: string) => time?.slice(0, 5) ?? '';
 
 export default function ItinerarioTab() {
   const { itinerary, loading, highlightedPlaceIndex, setHighlightedPlace, setFocusedMapPlace } = useItineraryStore();
+  const [layoutReady, setLayoutReady] = React.useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
   // Track each card's y offset
@@ -41,6 +44,37 @@ export default function ItinerarioTab() {
     const timer = setTimeout(() => setHighlightedPlace(null), 800);
     return () => clearTimeout(timer);
   }, [highlightedPlaceIndex]);
+
+  
+
+useFocusEffect(
+  useCallback(() => {
+    if (!layoutReady) return;
+    if (!itinerary?.places?.length) return;
+
+    const sorted = [...itinerary.places].sort(
+      (a, b) => a.orderIndex - b.orderIndex
+    );
+
+    const firstUpcomingIndex = sorted.findIndex(place => {
+      return !isPlacePast(itinerary.startDate, place.estimatedVisitTime);
+    });
+
+    if (firstUpcomingIndex === -1) return;
+
+    requestAnimationFrame(() => {
+      const offset = cardOffsets.current[firstUpcomingIndex];
+      if (offset == null) return;
+
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, offset - 100),
+        animated: true,
+      });
+    });
+  }, [layoutReady, itinerary])
+);
+
+
 
   if (loading) {
     return (
@@ -63,7 +97,7 @@ export default function ItinerarioTab() {
 
   const sorted = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
 
-  return (
+  return (<SafeAreaView style={styles.safe}>
     <ScrollView
       ref={scrollRef}
       style={styles.container}
@@ -103,6 +137,7 @@ export default function ItinerarioTab() {
       <Text style={styles.sectionLabel}>PARADAS DO ROTEIRO</Text>
       <View style={styles.timeline}>
         {sorted.map((place, idx) => {
+          const isPast = isPlacePast(itinerary.startDate, place.estimatedVisitTime);
           const color = PLACE_COLORS[idx % PLACE_COLORS.length];
           const isLast = idx === sorted.length - 1;
           const isHighlighted = highlightedPlaceIndex === idx;
@@ -111,11 +146,18 @@ export default function ItinerarioTab() {
             <View
               key={idx}
               style={styles.timelineRow}
-              onLayout={e => { cardOffsets.current[idx] = e.nativeEvent.layout.y; }}
+              onLayout={e => {
+  cardOffsets.current[idx] = e.nativeEvent.layout.y;
+
+  // verifica se todos os cards já foram medidos
+  if (cardOffsets.current.length === sorted.length) {
+    setLayoutReady(true);
+  }
+}}
             >
               {/* Rail */}
               <View style={styles.rail}>
-                <View style={[styles.dot, { backgroundColor: color }]} />
+                <View style={[styles.dot, isPast ? { backgroundColor: '#9aa4b2', opacity: 0.6 } : { backgroundColor: color }]} />
                 {!isLast && <View style={styles.line} />}
               </View>
 
@@ -125,11 +167,15 @@ export default function ItinerarioTab() {
                   styles.card,
                   isLast && { marginBottom: 0 },
                   isHighlighted && { borderWidth: 2, borderColor: color, shadowOpacity: 0.18 },
+                  isPast && { backgroundColor: '#d9d9d9', opacity: 0.3 },
                 ]}
                 activeOpacity={0.75}
                 onPress={() => {
                   setFocusedMapPlace(idx);
-                  router.navigate('/(itinerary)/mapa');
+                  router.push({
+                    pathname: '/mapa',
+                    params: { from: 'itinerario' }
+                  });
                 }}
               >
                 <View style={styles.cardTop}>
@@ -147,10 +193,12 @@ export default function ItinerarioTab() {
         })}
       </View>
     </ScrollView>
+  </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#023665' },
   container: { flex: 1, backgroundColor: '#f4f6f9' },
   content: { padding: 20, paddingBottom: 32 },
 
