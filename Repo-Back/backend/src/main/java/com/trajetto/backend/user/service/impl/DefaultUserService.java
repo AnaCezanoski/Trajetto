@@ -51,9 +51,17 @@ public class DefaultUserService implements UserService {
     public List<UserModel> createUser(UserModel userModel) {
         if (!ObjectUtils.isEmpty(userModel)) {
             try {
+                userModel.setFirstName(capitalizeWords(userModel.getFirstName().trim()));
+                userModel.setLastName(capitalizeWords(userModel.getLastName().trim()));
+                userModel.setCountry(capitalizeWords(userModel.getCountry().trim()));
+
+                userModel.setEmail(userModel.getEmail().trim().toLowerCase());
+
                 userModel.setPassword(passwordEncoder.encode(userModel.getPassword()));
+
                 UserModel saved = userRepository.save(userModel);
                 return Collections.singletonList(saved);
+
             } catch (Exception e) {
                 logger.error("Unable to save UserModel", e);
             }
@@ -65,12 +73,12 @@ public class DefaultUserService implements UserService {
     public UserModel updateUser(UserModel userModel) {
         return userRepository.findById(userModel.getId())
                 .map(existingUser -> {
-                    existingUser.setFirstName(userModel.getFirstName());
-                    existingUser.setLastName(userModel.getLastName());
-                    existingUser.setTravelerProfile(userModel.getTravelerProfile());
-                    existingUser.setTelephone(userModel.getTelephone());
-                    existingUser.setEmail(userModel.getEmail());
-                    existingUser.setCountry(userModel.getCountry());
+                    existingUser.setFirstName(capitalizeWords(userModel.getFirstName().trim()));
+                    existingUser.setLastName(capitalizeWords(userModel.getLastName().trim()));
+                    existingUser.setCountry(capitalizeWords(userModel.getCountry().trim()));
+                    existingUser.setEmail(userModel.getEmail().trim().toLowerCase());
+                    existingUser.setTravelerProfile(userModel.getTravelerProfile().trim());
+                    existingUser.setTelephone(userModel.getTelephone().trim());
                     existingUser.setBirthDate(userModel.getBirthDate());
                     //existingUser.setProfilePictureUrl(userModel.getProfilePictureUrl());
                     return userRepository.save(existingUser);
@@ -98,6 +106,23 @@ public class DefaultUserService implements UserService {
         }
         UserResponseDTO userResponseDTO = modelMapper.map(userModel, UserResponseDTO.class);
         return new LoginResponse(jwt.createToken(userModel), userResponseDTO);
+    }
+
+    private String capitalizeWords(String text) {
+        if (text == null || text.isEmpty()) return text;
+
+        String[] words = text.toLowerCase().split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1))
+                        .append(" ");
+            }
+        }
+
+        return result.toString().trim();
     }
 
 //    @Override

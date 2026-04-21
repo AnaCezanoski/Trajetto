@@ -13,6 +13,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
 import TrajettoLogo from '../components/TrajettoLogo';
+import { validateEmail } from '../utils/validators';
 
 const PRIMARY = '#023665';
 
@@ -24,13 +25,27 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+      const inputStyle = (field: string) => [
+        styles.input,
+        errors[field] ? styles.inputError : null,
+      ];
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Preencha todos os campos.');
-      return;
-    }
-    setError('');
+    const newErrors: Record<string, string> = {};
+
+        const emailError = validateEmail(email);
+        if (emailError) newErrors.email = emailError;
+
+        if (!password) newErrors.password = 'Senha é obrigatória';
+
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+          return;
+        }
+
+        setErrors({});
     try {
       setLoading(true);
       await login({ email, password });
@@ -63,20 +78,20 @@ export default function LoginScreen() {
 
           {error ? (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorBoxText}>{error}</Text>
             </View>
           ) : null}
 
           <Text style={styles.inputLabel}>E-mail</Text>
           <TextInput
-            style={styles.input}
+            style={inputStyle('email')}
             placeholder="seu@email.com"
-            placeholderTextColor="#aab"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
           <Text style={styles.inputLabel}>Senha</Text>
           <View style={styles.passwordWrapper}>
@@ -88,6 +103,7 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
+
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeBtn}
@@ -115,7 +131,11 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
           </View>
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
+        <TouchableOpacity onPress={() => router.push('/ForgotPasswordScreen')}>
+          <Text style={styles.link}>Esqueceu sua senha?</Text>
+        </TouchableOpacity>
           <TouchableOpacity
             style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
             onPress={handleLogin}
@@ -152,7 +172,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -174,7 +193,6 @@ const styles = StyleSheet.create({
     color: '#8a9ab0',
     marginBottom: 24,
   },
-
   errorBox: {
     backgroundColor: '#fff0f0',
     borderRadius: 10,
@@ -183,8 +201,19 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#EF4444',
   },
-  errorText: { fontSize: 13, color: '#c0392b' },
-
+  errorBoxText: {
+    fontSize: 13,
+    color: '#c0392b',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
   inputLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -218,7 +247,6 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   eyeBtn: { padding: 4 },
-
   loginBtn: {
     backgroundColor: PRIMARY,
     borderRadius: 12,
@@ -232,7 +260,6 @@ const styles = StyleSheet.create({
   },
   loginBtnDisabled: { opacity: 0.6 },
   loginBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -240,4 +267,5 @@ const styles = StyleSheet.create({
   },
   registerText: { fontSize: 14, color: '#8a9ab0' },
   registerLink: { fontSize: 14, color: PRIMARY, fontWeight: '700' },
+  link: { fontSize: 14, color: PRIMARY, textAlign: 'right', marginBottom: 8 },
 });

@@ -20,10 +20,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logoutRef = useRef<(() => Promise<void>) | null>(null);
 
   const logout = async () => {
-    try { await api.post('/user/logout'); } catch {}
+    // Limpa local ANTES de qualquer chamada de rede
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
     setUser(null);
+
+    // Tenta avisar o backend mas ignora qualquer erro
+    try {
+      await api.post('/user/logout');
+    } catch {}
   };
 
   logoutRef.current = logout;
@@ -38,12 +43,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     })();
 
+    let isLoggingOut = false; // ← fora do useEffect
+
     const interceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && !isLoggingOut) {
+          isLoggingOut = true;
           console.log('Token expirado — deslogando...');
           await logoutRef.current?.();
+          isLoggingOut = false;
         }
         return Promise.reject(error);
       }

@@ -210,7 +210,7 @@ export default function RoteirosTab() {
         onClose={() => setShowGenerate(false)}
         onAccept={(itinerary: Itinerary) => {
           setShowGenerate(false);
-          router.push('../itinerario');
+          router.push('/itinerario');
         }}
       />
     </SafeAreaView>

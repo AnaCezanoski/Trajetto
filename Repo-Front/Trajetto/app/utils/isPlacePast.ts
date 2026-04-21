@@ -14,3 +14,5 @@
 
     return now.getTime() > placeDateTime.getTime();
   };
+
+  export default isPlacePast;

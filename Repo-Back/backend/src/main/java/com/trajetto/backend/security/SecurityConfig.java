@@ -61,6 +61,8 @@ public class SecurityConfig {
                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/user")).hasRole("ADMIN")
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/login")).permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/logout")).authenticated()
+                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/password/forgot")).permitAll()
+                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/password/reset")).permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/create")).permitAll()
                         .requestMatchers(mvc.pattern(HttpMethod.GET, "/user/me")).authenticated()
                         .requestMatchers(mvc.pattern(HttpMethod.PUT, "/user/me")).authenticated()
