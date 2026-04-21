@@ -72,7 +72,7 @@ export default function QuizResultScreen() {
           style={styles.backButton}
           onPress={() =>
             fromProfile
-              ? router.replace('/(tabs)/perfil')
+              ? router.replace('/perfil')
               : router.replace('/(tabs)')
           }
         >
