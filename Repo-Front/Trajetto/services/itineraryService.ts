@@ -11,6 +11,16 @@ export class ItineraryService {
         return response.data;
     }
 
+    static async getAllItineraries(userId: number) {
+        const response = await api.get(`/itinerary/all/${userId}`);
+        return response.data;
+    }
+
+    static async activateItinerary(itineraryId: number, userId: number) {
+        const response = await api.patch(`/itinerary/${itineraryId}/activate/${userId}`);
+        return response.data;
+    }
+
     static async deleteItinerary(itineraryId: number, userId: number) {
         await api.delete(`/itinerary/${itineraryId}/user/${userId}`);
     }

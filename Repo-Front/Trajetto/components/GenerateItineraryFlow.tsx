@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,12 +15,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Svg, { Circle, G } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { Itinerary } from '../hooks/itineraryStore';
 import { useItineraryStore } from '../hooks/itineraryStore';
 
 const PRIMARY = '#023665';
+const STOP_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6', '#1ABC9C'];
 
 type Step = 'config' | 'loading' | 'preview';
 
@@ -29,76 +31,96 @@ type Props = {
   onClose: () => void;
 };
 
-// ── Nominatim geocoding ──────────────────────────────────────────────────────
-async function geocodeAddress(query: string): Promise<{ lat: number; lng: number; displayName: string } | null> {
+// ── Nominatim autocomplete ───────────────────────────────────────────────────
+type Suggestion = { lat: number; lng: number; displayName: string; shortName: string };
+
+async function fetchSuggestions(query: string): Promise<Suggestion[]> {
   const encoded = encodeURIComponent(query);
-  const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&countrycodes=it&limit=1&format=json`;
+  const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&countrycodes=it&limit=5&format=json&addressdetails=1`;
   const res = await fetch(url, { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } });
   const data = await res.json();
-  if (!data || data.length === 0) return null;
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), displayName: data[0].display_name };
+  if (!Array.isArray(data)) return [];
+  return data.map((item: any) => {
+    const addr = item.address ?? {};
+    const short =
+      addr.road
+        ? `${addr.road}${addr.house_number ? ' ' + addr.house_number : ''}${addr.suburb ? ', ' + addr.suburb : ''}`
+        : item.display_name.split(',')[0];
+    return {
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+      displayName: item.display_name,
+      shortName: short,
+    };
+  });
 }
 
-// ── Spinning ball animation ──────────────────────────────────────────────────
+// ── Orbit loader ─────────────────────────────────────────────────────────────
 const RADIUS = 54;
 const BALL_R = 9;
-const SIZE = (RADIUS + BALL_R + 4) * 2;
+const SIZE = (RADIUS + BALL_R + 6) * 2;
 const CENTER = SIZE / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 function OrbitLoader() {
-  const rotation = useRef(new Animated.Value(0)).current;
+  // Two separate values: ball uses native driver, arc (SVG prop) cannot
+  const ballRot = useRef(new Animated.Value(0)).current;
+  const arcProg = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.timing(rotation, {
-        toValue: 1,
-        duration: 1400,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
+    const anim = Animated.loop(
+      Animated.parallel([
+        Animated.timing(ballRot, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arcProg, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
   }, []);
 
-  const rotate = rotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
-  // Ball position on the circle
-  const AnimatedG = Animated.createAnimatedComponent(G);
+  const rotate = ballRot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  // Offset shrinks from full circumference (nothing drawn) → 0 (fully drawn)
+  const dashOffset = arcProg.interpolate({ inputRange: [0, 1], outputRange: [CIRCUMFERENCE, 0] });
 
   return (
     <View style={loaderStyles.container}>
-      <Svg width={SIZE} height={SIZE}>
-        {/* Track */}
-        <Circle cx={CENTER} cy={CENTER} r={RADIUS} stroke="#dde4ee" strokeWidth={6} fill="none" />
-        {/* Arc */}
-        <Circle
+      {/* Arc draws itself as ball moves — starts at 12 o'clock, grows clockwise */}
+      <Svg width={SIZE} height={SIZE} style={{ position: 'absolute' }}>
+        <AnimatedCircle
           cx={CENTER} cy={CENTER} r={RADIUS}
-          stroke={PRIMARY} strokeWidth={6} fill="none"
-          strokeDasharray={`${RADIUS * Math.PI * 1.5} ${RADIUS * Math.PI * 0.5}`}
+          stroke={PRIMARY} strokeWidth={3} fill="none"
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={dashOffset}
           strokeLinecap="round"
           rotation={-90} origin={`${CENTER},${CENTER}`}
         />
       </Svg>
-      {/* Orbiting ball — driven by Animated rotation */}
-      <Animated.View
-        style={[
-          loaderStyles.ball,
-          {
-            transform: [
-              { translateX: -CENTER + BALL_R },
-              { translateY: -CENTER + BALL_R },
-              { rotate },
-              { translateX: CENTER - BALL_R },
-              { translateY: CENTER - BALL_R - RADIUS },
-            ],
-          },
-        ]}
-      />
+      {/* Ball leads at the growing tip of the arc */}
+      <Animated.View style={[loaderStyles.arm, { transform: [{ rotate }] }]}>
+        <View style={loaderStyles.ball} />
+      </Animated.View>
     </View>
   );
 }
 
 const loaderStyles = StyleSheet.create({
   container: { width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' },
+  arm: {
+    position: 'absolute',
+    width: SIZE,
+    height: SIZE,
+  },
   ball: {
     position: 'absolute',
     width: BALL_R * 2,
@@ -108,9 +130,9 @@ const loaderStyles = StyleSheet.create({
     top: CENTER - BALL_R - RADIUS,
     left: CENTER - BALL_R,
     shadowColor: PRIMARY,
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 5,
   },
 });
 
@@ -121,46 +143,78 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
 
   const [step, setStep] = useState<Step>('config');
   const [addressInput, setAddressInput] = useState('');
-  const [resolvedAddress, setResolvedAddress] = useState<{ lat: number; lng: number; displayName: string } | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodeError, setGeocodeError] = useState('');
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<Suggestion | null>(null);
   const [generatedItinerary, setGeneratedItinerary] = useState<Itinerary | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const inputLayoutY = useRef<number>(0);
 
   // Reset on open
   useEffect(() => {
     if (visible) {
       setStep('config');
       setAddressInput('');
-      setResolvedAddress(null);
-      setGeocodeError('');
+      setSuggestions([]);
+      setSelectedPlace(null);
       setGeneratedItinerary(null);
     }
   }, [visible]);
 
-  const handleGeocode = async () => {
-    if (!addressInput.trim()) return;
-    setGeocoding(true);
-    setGeocodeError('');
-    setResolvedAddress(null);
-    try {
-      const result = await geocodeAddress(addressInput.trim());
-      if (!result) {
-        setGeocodeError('Endereço não encontrado. Tente ser mais específico.');
-      } else {
-        setResolvedAddress(result);
-      }
-    } catch {
-      setGeocodeError('Erro ao buscar endereço. Verifique sua conexão.');
-    } finally {
-      setGeocoding(false);
+  const handleInputChange = (text: string) => {
+    setAddressInput(text);
+    setSelectedPlace(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (text.trim().length < 3) {
+      setSuggestions([]);
+      return;
     }
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await fetchSuggestions(text.trim());
+        setSuggestions(results);
+        if (results.length > 0) {
+          // Scroll to show suggestions above the keyboard
+          scrollViewRef.current?.scrollTo({ y: inputLayoutY.current, animated: true });
+        }
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+  };
+
+  const handleSelectSuggestion = (item: Suggestion) => {
+    Keyboard.dismiss();
+    setSelectedPlace(item);
+    setAddressInput(item.shortName);
+    setSuggestions([]);
+  };
+
+  const handleClearInput = () => {
+    setAddressInput('');
+    setSuggestions([]);
+    setSelectedPlace(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  };
+
+  const runGenerate = async () => {
+    const start = Date.now();
+    const result = await generateItinerary(user!.id, selectedPlace!.lat, selectedPlace!.lng);
+    const elapsed = Date.now() - start;
+    const remaining = 2000 - elapsed;
+    if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
+    return result;
   };
 
   const handleGenerate = async () => {
-    if (!resolvedAddress || !user) return;
+    if (!selectedPlace || !user) return;
     setStep('loading');
     try {
-      const result = await generateItinerary(user.id, resolvedAddress.lat, resolvedAddress.lng);
+      const result = await runGenerate();
       setGeneratedItinerary(result);
       setStep('preview');
     } catch {
@@ -170,10 +224,10 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
   };
 
   const handleRegenerate = async () => {
-    if (!resolvedAddress || !user) return;
+    if (!selectedPlace || !user) return;
     setStep('loading');
     try {
-      const result = await generateItinerary(user.id, resolvedAddress.lat, resolvedAddress.lng);
+      const result = await runGenerate();
       setGeneratedItinerary(result);
       setStep('preview');
     } catch {
@@ -209,7 +263,11 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
 
           {/* ══════════ STEP: CONFIG ══════════ */}
           {step === 'config' && (
-            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              ref={scrollViewRef}
+              contentContainerStyle={styles.content}
+              keyboardShouldPersistTaps="handled"
+            >
 
               {/* Cidade */}
               <Text style={styles.sectionLabel}>CIDADE</Text>
@@ -231,45 +289,70 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
               <Text style={styles.sectionLabel}>PONTO DE PARTIDA</Text>
               <Text style={styles.hint}>Digite seu hotel ou endereço em Roma</Text>
 
-              <View style={styles.searchRow}>
-                <TextInput
-                  style={styles.addressInput}
-                  placeholder="Ex: Via Veneto 45, Roma"
-                  placeholderTextColor="#aab"
-                  value={addressInput}
-                  onChangeText={text => {
-                    setAddressInput(text);
-                    setResolvedAddress(null);
-                    setGeocodeError('');
-                  }}
-                  onSubmitEditing={handleGeocode}
-                  returnKeyType="search"
-                />
-                <TouchableOpacity style={styles.searchBtn} onPress={handleGeocode} disabled={geocoding}>
-                  {geocoding
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Text style={styles.searchBtnText}>🔍</Text>
+              {/* Campo com ícone de lupa e X */}
+              <View
+                style={styles.autocompleteWrapper}
+                onLayout={e => { inputLayoutY.current = e.nativeEvent.layout.y; }}
+              >
+                <View style={[styles.inputRow, selectedPlace && styles.inputRowSelected]}>
+                  <Text style={styles.inputIcon}>🔍</Text>
+                  <TextInput
+                    style={styles.addressInput}
+                    placeholder="Ex: Via Veneto 45, Roma"
+                    placeholderTextColor="#aab"
+                    value={addressInput}
+                    onChangeText={handleInputChange}
+                    returnKeyType="search"
+                    autoCorrect={false}
+                  />
+                  {searching
+                    ? <ActivityIndicator size="small" color={PRIMARY} style={{ marginRight: 12 }} />
+                    : addressInput.length > 0
+                      ? (
+                        <TouchableOpacity onPress={handleClearInput} style={styles.clearBtn}>
+                          <Text style={styles.clearBtnText}>✕</Text>
+                        </TouchableOpacity>
+                      ) : null
                   }
-                </TouchableOpacity>
+                </View>
+
+                {/* Dropdown de sugestões */}
+                {suggestions.length > 0 && !selectedPlace && (
+                  <View style={styles.suggestionsBox}>
+                    {suggestions.map((item, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[styles.suggestionItem, idx < suggestions.length - 1 && styles.suggestionDivider]}
+                        onPress={() => handleSelectSuggestion(item)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.suggestionPin}>📍</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.suggestionPrimary} numberOfLines={1}>{item.shortName}</Text>
+                          <Text style={styles.suggestionSecondary} numberOfLines={1}>
+                            {item.displayName.split(',').slice(1, 3).join(',')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
 
-              {geocodeError ? (
-                <Text style={styles.errorText}>{geocodeError}</Text>
-              ) : null}
-
-              {resolvedAddress && (
+              {/* Endereço confirmado */}
+              {selectedPlace && (
                 <View style={styles.resolvedBox}>
-                  <Text style={styles.resolvedIcon}>📍</Text>
-                  <Text style={styles.resolvedText} numberOfLines={3}>
-                    {resolvedAddress.displayName}
+                  <Text style={styles.resolvedIcon}>✅</Text>
+                  <Text style={styles.resolvedText} numberOfLines={2}>
+                    {selectedPlace.displayName.split(',').slice(0, 3).join(',')}
                   </Text>
                 </View>
               )}
 
               <TouchableOpacity
-                style={[styles.generateBtn, !resolvedAddress && styles.generateBtnDisabled]}
+                style={[styles.generateBtn, !selectedPlace && styles.generateBtnDisabled]}
                 onPress={handleGenerate}
-                disabled={!resolvedAddress}
+                disabled={!selectedPlace}
                 activeOpacity={0.85}
               >
                 <Text style={styles.generateBtnText}>Gerar Roteiro</Text>
@@ -288,28 +371,49 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
           {/* ══════════ STEP: PREVIEW ══════════ */}
           {step === 'preview' && generatedItinerary && (
             <ScrollView contentContainerStyle={styles.content}>
-              <Text style={styles.previewSubtitle}>
-                {generatedItinerary.places.length} paradas · Roma, Itália
-              </Text>
 
-              {/* Preview dos primeiros 3 lugares */}
+              {/* Resumo */}
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTitle}>🗓  Roma, Itália</Text>
+                <Text style={styles.summaryMeta}>
+                  {generatedItinerary.places.length} paradas · {selectedPlace?.shortName ?? ''}
+                </Text>
+              </View>
+
+              {/* Lista completa de lugares */}
               <View style={styles.previewList}>
-                {generatedItinerary.places.slice(0, 3).map((place, idx) => (
-                  <View key={idx} style={styles.previewItem}>
-                    <View style={[styles.previewIndex, { backgroundColor: idx === 0 ? PRIMARY : '#4a90d9' }]}>
-                      <Text style={styles.previewIndexText}>{idx + 1}</Text>
+                {generatedItinerary.places.map((place, idx) => {
+                  const color = STOP_COLORS[idx % STOP_COLORS.length];
+                  const isLast = idx === generatedItinerary.places.length - 1;
+                  return (
+                    <View key={idx}>
+                      <View style={styles.previewItem}>
+                        {/* Linha vertical da timeline */}
+                        <View style={styles.timelineCol}>
+                          <View style={[styles.previewIndex, { backgroundColor: color }]}>
+                            <Text style={styles.previewIndexText}>{idx + 1}</Text>
+                          </View>
+                          {!isLast && <View style={[styles.timelineLine, { backgroundColor: color + '40' }]} />}
+                        </View>
+                        <View style={styles.previewItemContent}>
+                          <View style={styles.previewItemRow}>
+                            <Text style={styles.previewPlaceName} numberOfLines={2}>{place.name}</Text>
+                            {place.estimatedVisitTime ? (
+                              <View style={[styles.timeBadge, { backgroundColor: color + '18', borderColor: color + '50' }]}>
+                                <Text style={[styles.timeBadgeText, { color }]}>
+                                  {place.estimatedVisitTime.slice(0, 5)}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          {place.address ? (
+                            <Text style={styles.previewPlaceAddr} numberOfLines={1}>{place.address}</Text>
+                          ) : null}
+                        </View>
+                      </View>
                     </View>
-                    <View style={styles.previewItemContent}>
-                      <Text style={styles.previewPlaceName}>{place.name}</Text>
-                      <Text style={styles.previewPlaceAddr} numberOfLines={1}>{place.address}</Text>
-                    </View>
-                  </View>
-                ))}
-                {generatedItinerary.places.length > 3 && (
-                  <Text style={styles.moreText}>
-                    + {generatedItinerary.places.length - 3} outros lugares
-                  </Text>
-                )}
+                  );
+                })}
               </View>
 
               {/* Ações */}
@@ -371,29 +475,54 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
   chipActiveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  searchRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  autocompleteWrapper: { marginBottom: 4, zIndex: 10 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+  },
+  inputRowSelected: { borderColor: '#43a047' },
+  inputIcon: { fontSize: 16, marginRight: 8 },
   addressInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingVertical: 14,
     fontSize: 15,
     color: '#1a1a1a',
   },
-  searchBtn: {
-    backgroundColor: PRIMARY,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 48,
-  },
-  searchBtnText: { fontSize: 18 },
+  clearBtn: { padding: 8 },
+  clearBtnText: { fontSize: 14, color: '#aab', fontWeight: '600' },
 
-  errorText: { fontSize: 13, color: '#EF4444', marginBottom: 8 },
+  suggestionsBox: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  suggestionDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f4f8',
+  },
+  suggestionPin: { fontSize: 16 },
+  suggestionPrimary: { fontSize: 14, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
+  suggestionSecondary: { fontSize: 12, color: '#8a9ab0' },
 
   resolvedBox: {
     flexDirection: 'row',
@@ -429,11 +558,20 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 16, color: '#8a9ab0', fontWeight: '500' },
 
   // Preview
-  previewSubtitle: { fontSize: 14, color: '#8a9ab0', marginBottom: 20, marginTop: 4 },
+  summaryCard: {
+    backgroundColor: PRIMARY,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 18,
+  },
+  summaryTitle: { fontSize: 16, fontWeight: '700', color: '#fff', marginBottom: 4 },
+  summaryMeta: { fontSize: 13, color: 'rgba(255,255,255,0.7)' },
+
   previewList: {
     backgroundColor: '#fff',
     borderRadius: 18,
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     marginBottom: 24,
     shadowColor: '#000',
     shadowOpacity: 0.06,
@@ -442,9 +580,18 @@ const styles = StyleSheet.create({
   },
   previewItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
+    paddingVertical: 12,
     gap: 14,
+  },
+  timelineCol: {
+    alignItems: 'center',
+    width: 30,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    marginTop: 4,
+    minHeight: 16,
   },
   previewIndex: {
     width: 30,
@@ -454,10 +601,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   previewIndexText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-  previewItemContent: { flex: 1 },
-  previewPlaceName: { fontSize: 15, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
+  previewItemContent: { flex: 1, paddingBottom: 4 },
+  previewItemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 3 },
+  previewPlaceName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1a1a1a', lineHeight: 20 },
   previewPlaceAddr: { fontSize: 12, color: '#8a9ab0' },
-  moreText: { textAlign: 'center', fontSize: 13, color: '#8a9ab0', paddingVertical: 10 },
+  timeBadge: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+  },
+  timeBadgeText: { fontSize: 11, fontWeight: '700' },
 
   previewActions: { flexDirection: 'row', gap: 12 },
   regenBtn: {

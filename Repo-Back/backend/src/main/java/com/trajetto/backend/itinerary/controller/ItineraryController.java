@@ -3,6 +3,7 @@ package com.trajetto.backend.itinerary.controller;
 import com.trajetto.backend.itinerary.dto.GenerateItineraryRequestDTO;
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
 import com.trajetto.backend.itinerary.service.ItineraryService;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -52,6 +53,25 @@ public class ItineraryController {
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
             return ResponseEntity.status(400).body(null);
+        }
+    }
+
+    @GetMapping("/all/{userId}")
+    public ResponseEntity<List<ItineraryResponseDTO>> getAll(@PathVariable Long userId) {
+        try {
+            return ResponseEntity.ok(itineraryService.getAllItineraries(userId));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PatchMapping("/{itineraryId}/activate/{userId}")
+    public ResponseEntity<ItineraryResponseDTO> activate(@PathVariable Long itineraryId, @PathVariable Long userId) {
+        try {
+            return ResponseEntity.ok(itineraryService.activateItinerary(itineraryId, userId));
+        } catch (RuntimeException e) {
+            if ("Forbidden".equals(e.getMessage())) return ResponseEntity.status(403).build();
+            return ResponseEntity.notFound().build();
         }
     }
 

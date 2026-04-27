@@ -42,19 +42,20 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)"       options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)"       options={{ headerShown: false, headerBackTitle: '' }} />
         <Stack.Screen name="(itinerary)" options={{ headerShown: false }} />
         <Stack.Screen name="LoginScreen"  options={{ headerShown: false }} />
-        <Stack.Screen name="RegisterScreen"  options={{ title: 'Criar Conta' }} />
-        <Stack.Screen name="UserListScreen"  options={{ title: 'Usuários' }} />
-        <Stack.Screen name="UserDetailScreen" options={{ title: 'Editar Usuário' }} />
-        <Stack.Screen name="ForgotPasswordScreen" options={{ title: 'Forgot Password' }} />
-        <Stack.Screen name="ResetPasswordScreen" options={{ title: 'Reset Password' }} />
+        <Stack.Screen name="RegisterScreen"  options={{ title: 'Criar Conta', headerBackTitle: '' }} />
+        <Stack.Screen name="UserListScreen"  options={{ title: 'Usuários', headerBackTitle: '' }} />
+        <Stack.Screen name="UserDetailScreen" options={{ title: 'Editar Usuário', headerBackTitle: '' }} />
+        <Stack.Screen name="ForgotPasswordScreen" options={{ title: 'Esqueci a Senha', headerBackTitle: '' }} />
+        <Stack.Screen name="ResetPasswordScreen" options={{ title: 'Redefinir Senha', headerBackTitle: '' }} />
         <Stack.Screen name="TravelerTestScreen" options={{ headerShown: false }} />
         <Stack.Screen name="QuizScreen"       options={{ headerShown: false }} />
         <Stack.Screen name="QuizResultScreen" options={{ headerShown: false }} />
-        <Stack.Screen name="ExploreScreen"    options={{ title: 'Explorar' }} />
-        <Stack.Screen name="SpotDetailScreen" options={{ title: 'Detalhe' }} />
+        <Stack.Screen name="perfil"            options={{ title: 'My Profile', headerBackTitle: '' }} />
+        <Stack.Screen name="ExploreScreen"    options={{ title: 'Explorar', headerBackTitle: '' }} />
+        <Stack.Screen name="SpotDetailScreen" options={{ title: 'Detalhe', headerBackTitle: '' }} />
         <Stack.Screen name="modal"            options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="auto" />

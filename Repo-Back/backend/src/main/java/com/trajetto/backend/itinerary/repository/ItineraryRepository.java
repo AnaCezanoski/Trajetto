@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface ItineraryRepository extends JpaRepository<ItineraryModel, Long> {
     List<ItineraryModel> findByUserAndActiveTrue(UserModel user);
+    List<ItineraryModel> findByUserOrderByStartDateDesc(UserModel user);
 }

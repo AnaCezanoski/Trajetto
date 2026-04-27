@@ -22,20 +22,24 @@ export interface Itinerary {
 
 type ItineraryStore = {
   itinerary: Itinerary | null;
+  itineraries: Itinerary[];
   loading: boolean;
   error: string | null;
   highlightedPlaceIndex: number | null;
   focusedMapPlaceIndex: number | null;
   fetchItinerary: (userId: number) => Promise<void>;
+  fetchAllItineraries: (userId: number) => Promise<void>;
   generateItinerary: (userId: number, startLat: number, startLng: number) => Promise<Itinerary>;
   acceptGeneratedItinerary: (itinerary: Itinerary) => void;
+  activateItinerary: (itineraryId: number, userId: number) => Promise<void>;
   deleteItinerary: (itineraryId: number, userId: number) => Promise<void>;
   setHighlightedPlace: (index: number | null) => void;
   setFocusedMapPlace: (index: number | null) => void;
 };
 
-export const useItineraryStore = create<ItineraryStore>((set) => ({
+export const useItineraryStore = create<ItineraryStore>((set, get) => ({
   itinerary: null,
+  itineraries: [],
   loading: false,
   error: null,
   highlightedPlaceIndex: null,
@@ -51,18 +55,45 @@ export const useItineraryStore = create<ItineraryStore>((set) => ({
     }
   },
 
+  fetchAllItineraries: async (userId: number) => {
+    try {
+      set({ loading: true, error: null });
+      const data: Itinerary[] = await ItineraryService.getAllItineraries(userId);
+      const active = data.find(i => i.active) ?? null;
+      set({ itineraries: data, itinerary: active, loading: false });
+    } catch {
+      set({ itineraries: [], itinerary: null, error: null, loading: false });
+    }
+  },
+
   generateItinerary: async (userId: number, startLat: number, startLng: number) => {
     const data = await ItineraryService.generateItinerary(userId, startLat, startLng);
     return data as Itinerary;
   },
 
   acceptGeneratedItinerary: (itinerary: Itinerary) => {
-    set({ itinerary });
+    const prev = get().itineraries.map(i => ({ ...i, active: false }));
+    set({ itinerary, itineraries: [itinerary, ...prev] });
+  },
+
+  activateItinerary: async (itineraryId: number, userId: number) => {
+    const activated = await ItineraryService.activateItinerary(itineraryId, userId);
+    set(state => ({
+      itinerary: activated,
+      itineraries: state.itineraries.map(i => ({ ...i, active: i.id === itineraryId })),
+    }));
   },
 
   deleteItinerary: async (itineraryId: number, userId: number) => {
     await ItineraryService.deleteItinerary(itineraryId, userId);
-    set({ itinerary: null });
+    set(state => {
+      const remaining = state.itineraries.filter(i => i.id !== itineraryId);
+      const activeStillExists = remaining.find(i => i.active) ?? null;
+      return {
+        itineraries: remaining,
+        itinerary: state.itinerary?.id === itineraryId ? activeStillExists : state.itinerary,
+      };
+    });
   },
 
   setHighlightedPlace: (index) => set({ highlightedPlaceIndex: index }),
