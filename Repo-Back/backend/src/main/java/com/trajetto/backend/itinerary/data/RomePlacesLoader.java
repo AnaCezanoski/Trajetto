@@ -20,7 +20,10 @@ public class RomePlacesLoader {
             String address,
             double latitude,
             double longitude,
-            List<String> profiles
+            List<String> profiles,
+            String openingHours,
+            String category,
+            String fee
     ) {}
 
     @Autowired
@@ -46,8 +49,11 @@ public class RomePlacesLoader {
                 List<String> profiles = props.has("profiles")
                         ? objectMapper.convertValue(props.get("profiles"), new TypeReference<>() {})
                         : List.of();
+                String openingHours = props.path("opening_hours").asText("");
+                String category = props.path("category").asText("");
+                String fee = props.path("fee").asText("");
                 if (!name.isBlank() && lat != 0.0 && lon != 0.0) {
-                    loaded.add(new RomePlace(name, address, lat, lon, profiles));
+                    loaded.add(new RomePlace(name, address, lat, lon, profiles, openingHours, category, fee));
                 }
             }
         } catch (Exception e) {

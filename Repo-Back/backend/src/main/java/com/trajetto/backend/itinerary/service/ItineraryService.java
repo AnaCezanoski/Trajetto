@@ -184,6 +184,9 @@ public class ItineraryService {
             p.setLongitude(rp.longitude());
             p.setEstimatedVisitTime(times[i]);
             p.setOrderIndex(i);
+            p.setOpeningHours(rp.openingHours().isBlank() ? null : rp.openingHours());
+            p.setCategory(rp.category().isBlank() ? null : rp.category());
+            p.setFee(rp.fee().isBlank() ? null : rp.fee());
             p.setItinerary(itinerary);
             places.add(p);
         }
@@ -260,6 +263,9 @@ public class ItineraryService {
         dto.setLongitude(model.getLongitude());
         dto.setEstimatedVisitTime(model.getEstimatedVisitTime());
         dto.setOrderIndex(model.getOrderIndex());
+        dto.setOpeningHours(model.getOpeningHours());
+        dto.setCategory(model.getCategory());
+        dto.setFee(model.getFee());
         return dto;
     }
 }

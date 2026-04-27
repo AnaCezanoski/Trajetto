@@ -23,20 +23,21 @@ function RootLayoutNav() {
     const inQuizFlow  = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(segments[0] as string);
     const inTabs      = segments[0] === '(tabs)';
 
-    const needsQuiz = !user?.travelerProfile || user.travelerProfile === 'SKIPPED';
+    const needsQuiz = !user?.isAdmin && (!user?.travelerProfile || user.travelerProfile === 'SKIPPED');
 
     if (!user && !inPublic) {
       router.replace('/LoginScreen');
     } else if (user && inPublic) {
-      // Momento do login: verifica se tem perfil válido
-      if (needsQuiz) {
+      if (user.isAdmin) {
+        router.replace('/UserListScreen');
+      } else if (needsQuiz) {
         router.replace('/TravelerTestScreen');
       } else {
         router.replace('/(tabs)');
       }
+    } else if (user?.isAdmin && inTabs) {
+      router.replace('/UserListScreen');
     }
-    // Nota: usuário com SKIPPED que já está nas tabs NÃO é redirecionado —
-    // o prompt só acontece no momento do login (inPublic → user).
   }, [user, loading, segments]);
 
   return (

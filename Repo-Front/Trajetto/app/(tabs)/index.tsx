@@ -1,6 +1,6 @@
 import GenerateItineraryFlow from '@/components/GenerateItineraryFlow';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,9 +36,11 @@ export default function RoteirosTab() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  useEffect(() => {
-    if (user?.id) fetchAllItineraries(user.id);
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) fetchAllItineraries(user.id);
+    }, [user?.id])
+  );
 
   // Exit select mode when itineraries change (after bulk delete)
   useEffect(() => {

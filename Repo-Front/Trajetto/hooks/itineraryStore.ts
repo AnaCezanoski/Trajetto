@@ -8,6 +8,9 @@ export interface Places {
   longitude: number;
   estimatedVisitTime: string;
   orderIndex: number;
+  openingHours?: string | null;
+  category?: string | null;
+  fee?: string | null;
 }
 
 export interface Itinerary {

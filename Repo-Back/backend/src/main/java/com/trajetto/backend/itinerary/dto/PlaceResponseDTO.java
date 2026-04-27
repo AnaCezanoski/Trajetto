@@ -13,4 +13,7 @@ public class PlaceResponseDTO {
     private Double longitude;
     private LocalTime estimatedVisitTime;
     private Integer orderIndex;
+    private String openingHours;
+    private String category;
+    private String fee;
 }

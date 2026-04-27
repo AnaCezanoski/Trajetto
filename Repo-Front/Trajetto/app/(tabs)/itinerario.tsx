@@ -185,8 +185,32 @@ useFocusEffect(
                   <Text style={[styles.timeText, { color }]}>{formatTime(place.estimatedVisitTime)}</Text>
                 </View>
                 <Text style={styles.placeName}>{place.name}</Text>
+                <View style={styles.tagsRow}>
+                  {place.category ? (
+                    <View style={styles.categoryBadge}>
+                      <Text style={styles.categoryText}>
+                        {place.category === 'museum' ? '🏛️ Museum'
+                          : place.category === 'attraction' ? '🎯 Attraction'
+                          : place.category === 'park' ? '🌳 Park'
+                          : place.category === 'church' ? '⛪ Church'
+                          : `📍 ${place.category.charAt(0).toUpperCase() + place.category.slice(1)}`}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {place.fee === 'yes' ? (
+                    <View style={styles.feeBadge}>
+                      <Text style={styles.feeText}>🎟️ Paid entry</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.placeAddress} numberOfLines={2}>{place.address}</Text>
-                <Text style={[styles.mapHint, { color }]}>ver no mapa ↗</Text>
+                {place.openingHours ? (
+                  <View style={styles.hoursRow}>
+                    <Text style={styles.hoursIcon}>🕐</Text>
+                    <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
+                  </View>
+                ) : null}
+                <Text style={[styles.mapHint, { color }]}>View on map ↗</Text>
               </TouchableOpacity>
             </View>
           );
@@ -270,7 +294,21 @@ const styles = StyleSheet.create({
   },
   orderText: { fontSize: 12, fontWeight: 'bold', color: '#fff' },
   timeText: { fontSize: 13, fontWeight: '700' },
-  placeName: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 4 },
+  placeName: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  categoryBadge: {
+    backgroundColor: '#eef2f7', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  categoryText: { fontSize: 12, fontWeight: '600', color: '#4a5568' },
+  feeBadge: {
+    backgroundColor: '#fff7ed', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  feeText: { fontSize: 12, fontWeight: '600', color: '#c2410c' },
   placeAddress: { fontSize: 13, color: '#8a9ab0', lineHeight: 18, marginBottom: 6 },
+  hoursRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
+  hoursIcon: { fontSize: 12, marginTop: 1 },
+  hoursText: { fontSize: 12, color: '#6b7280', flex: 1, lineHeight: 17 },
   mapHint: { fontSize: 11, fontWeight: '600', opacity: 0.75 },
 });

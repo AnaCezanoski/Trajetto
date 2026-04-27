@@ -29,7 +29,7 @@ export default function QuizResultScreen() {
       <SafeAreaView style={styles.container}>
         <Text style={styles.errorText}>Resultado não encontrado.</Text>
         <TouchableOpacity
-          onPress={() => fromProfile ? router.replace('/(tabs)/perfil') : router.replace('/(tabs)')}
+          onPress={() => fromProfile ? router.dismiss(2) : router.replace('/(tabs)')}
           style={styles.backButton}
         >
           <Text style={styles.backButtonText}>Voltar</Text>
@@ -72,7 +72,7 @@ export default function QuizResultScreen() {
           style={styles.backButton}
           onPress={() =>
             fromProfile
-              ? router.replace('/perfil')
+              ? router.dismiss(2)
               : router.replace('/(tabs)')
           }
         >

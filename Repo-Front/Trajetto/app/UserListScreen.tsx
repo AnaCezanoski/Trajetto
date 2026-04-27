@@ -1,87 +1,195 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  SafeAreaView, View, Text, FlatList,
+  TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
+} from 'react-native';
 import { api } from '../services/api';
 import { User } from '../types/user';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
+const PRIMARY = '#023665';
+
 export default function UserListScreen() {
-  const { logout } = useAuth();
+  const { user: admin, logout } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const res = await api.get('/user');
-      console.log('FIRST USER:', JSON.stringify(res.data[0]));
       setUsers(res.data);
-    } catch (error: any) {
-      console.log('ERROR:', error.message);
-      Alert.alert('Error', 'Unable to load users');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível carregar os usuários.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useFocusEffect(
-    useCallback(() => {
-      fetchUsers();
-    }, [])
+    useCallback(() => { fetchUsers(); }, [])
   );
 
-  const deleteUser = (id: number) => {
-    Alert.alert('Confirm', 'Confirm user deletion?', [
-      { text: 'Cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        await api.delete(`/user/${id}`);
-        fetchUsers();
-      }},
+  const deleteUser = (id: number, name: string) => {
+    Alert.alert('Excluir usuário', `Deseja excluir ${name}?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive', onPress: async () => {
+          await api.delete(`/user/${id}`);
+          fetchUsers();
+        },
+      },
     ]);
   };
 
   return (
-    <View style={styles.container}>
-       <Text style={styles.title}>Users</Text>
-      <FlatList
-        data={users}
-        keyExtractor={(item, index) =>
-          item.code !== undefined ? String(item.code) : String(index)
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View>
-              <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
-              <Text style={styles.email}>{item.email}</Text>
-              <Text style={styles.meta}>{item.country} · {item.telephone}</Text>
-              <Text style={styles.role}>{item.isAdmin ? 'ADMIN' : 'USER'}</Text>
+    <SafeAreaView style={styles.safe}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Painel Admin</Text>
+          <Text style={styles.headerSub}>Olá, {admin?.firstName} 🛡️</Text>
+        </View>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text style={styles.loadingText}>Carregando usuários...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={users}
+          keyExtractor={(item, index) => item.id != null ? String(item.id) : String(index)}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <Text style={styles.sectionLabel}>USUÁRIOS ({users.length})</Text>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardLeft}>
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarEmoji}>👤</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName}>{item.firstName} {item.lastName}</Text>
+                  <Text style={styles.cardEmail}>{item.email}</Text>
+                  <Text style={styles.cardMeta}>{item.country}{item.telephone ? ` · ${item.telephone}` : ''}</Text>
+                  <View style={[styles.roleBadge, item.isAdmin && styles.roleBadgeAdmin]}>
+                    <Text style={[styles.roleBadgeText, item.isAdmin && styles.roleBadgeTextAdmin]}>
+                      {item.isAdmin ? '🛡️ Admin' : '👤 Usuário'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => router.push({ pathname: '/UserDetailScreen', params: { user: JSON.stringify(item) } })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.editBtnText}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => deleteUser(item.id, item.firstName)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteBtnIcon}>🗑️</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.actions}>
-              <TouchableOpacity onPress={() => router.push({
-                pathname: '/UserDetailScreen',
-                params: { user: JSON.stringify(item) }
-              })}>
-                <Text style={styles.editBtn}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteUser(item.id)}>
-                <Text style={styles.deleteBtn}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
-    </View>
+          )}
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#B6A79A' },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 24, color: '#023665' },
-  card: { backgroundColor: '#fff', padding: 16, borderRadius: 8, marginBottom: 10,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontWeight: 'bold', fontSize: 16 },
-  email: { color: '#666', fontSize: 13 },
-  meta: { color: '#999', fontSize: 12 },
-  role: { color: '#023665', fontSize: 12, fontWeight: 'bold', marginTop: 2 },
-  actions: { flexDirection: 'row', gap: 12 },
-  editBtn: { color: '#023665', fontWeight: 'bold' },
-  deleteBtn: { color: '#EF4444', fontWeight: 'bold' },
+  safe: { flex: 1, backgroundColor: PRIMARY },
+
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    backgroundColor: PRIMARY,
+  },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  logoutBtn: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  logoutText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f4f6f9' },
+  loadingText: { marginTop: 12, fontSize: 15, color: '#888' },
+
+  list: { padding: 20, paddingBottom: 32, backgroundColor: '#f4f6f9', flexGrow: 1 },
+
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', color: '#8a9ab0',
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12,
+  },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  cardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  avatarCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#eef2f7',
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarEmoji: { fontSize: 22 },
+  cardInfo: { flex: 1 },
+  cardName: { fontSize: 15, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
+  cardEmail: { fontSize: 13, color: '#6b7280', marginBottom: 2 },
+  cardMeta: { fontSize: 12, color: '#9ca3af', marginBottom: 6 },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  roleBadgeAdmin: { backgroundColor: '#e8f0fe' },
+  roleBadgeText: { fontSize: 11, fontWeight: '700', color: '#6b7280' },
+  roleBadgeTextAdmin: { color: PRIMARY },
+
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 },
+  editBtn: {
+    borderWidth: 1.5,
+    borderColor: PRIMARY,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: PRIMARY },
+  deleteBtn: { padding: 6 },
+  deleteBtnIcon: { fontSize: 18 },
 });
