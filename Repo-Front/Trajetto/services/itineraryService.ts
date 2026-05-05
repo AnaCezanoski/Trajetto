@@ -24,4 +24,9 @@ export class ItineraryService {
     static async deleteItinerary(itineraryId: number, userId: number) {
         await api.delete(`/itinerary/${itineraryId}/user/${userId}`);
     }
+
+    static async rateItinerary(itineraryId: number, rating: number | null, ratingDescription: string | null) {
+        const response = await api.patch(`/itinerary/${itineraryId}/rating`, { rating, ratingDescription });
+        return response.data;
+    }
 }

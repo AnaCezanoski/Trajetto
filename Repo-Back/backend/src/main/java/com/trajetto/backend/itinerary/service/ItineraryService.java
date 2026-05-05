@@ -5,6 +5,7 @@ import com.trajetto.backend.itinerary.data.RomePlacesLoader.RomePlace;
 import com.trajetto.backend.itinerary.dto.GenerateItineraryRequestDTO;
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
 import com.trajetto.backend.itinerary.dto.PlaceResponseDTO;
+import com.trajetto.backend.itinerary.dto.RatingRequestDTO;
 import com.trajetto.backend.itinerary.model.ItineraryModel;
 import com.trajetto.backend.itinerary.model.PlaceModel;
 import com.trajetto.backend.itinerary.repository.ItineraryRepository;
@@ -230,6 +231,14 @@ public class ItineraryService {
         return toDTO(target);
     }
 
+    public ItineraryResponseDTO updateRating(Long itineraryId, RatingRequestDTO req) {
+        ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+        itinerary.setRating(req.getRating());
+        itinerary.setRatingDescription(req.getRatingDescription());
+        return toDTO(itineraryRepository.save(itinerary));
+    }
+
     public void deleteItinerary(Long itineraryId, Long userId) {
         ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new RuntimeException("Itinerary not found"));
@@ -247,6 +256,8 @@ public class ItineraryService {
         dto.setActive(model.getActive());
         dto.setOriginLatitude(model.getOriginLatitude());
         dto.setOriginLongitude(model.getOriginLongitude());
+        dto.setRating(model.getRating());
+        dto.setRatingDescription(model.getRatingDescription());
         dto.setPlaces(
                 model.getPlaces().stream()
                         .map(this::toPlaceDTO)

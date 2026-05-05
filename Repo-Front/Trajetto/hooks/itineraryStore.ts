@@ -21,6 +21,8 @@ export interface Itinerary {
   places: Places[];
   originLatitude?: number | null;
   originLongitude?: number | null;
+  rating?: number | null;
+  ratingDescription?: string | null;
 }
 
 type ItineraryStore = {
@@ -36,6 +38,7 @@ type ItineraryStore = {
   acceptGeneratedItinerary: (itinerary: Itinerary) => void;
   activateItinerary: (itineraryId: number, userId: number) => Promise<void>;
   deleteItinerary: (itineraryId: number, userId: number) => Promise<void>;
+  rateItinerary: (itineraryId: number, rating: number | null, ratingDescription: string | null) => Promise<void>;
   setHighlightedPlace: (index: number | null) => void;
   setFocusedMapPlace: (index: number | null) => void;
 };
@@ -97,6 +100,14 @@ export const useItineraryStore = create<ItineraryStore>((set, get) => ({
         itinerary: state.itinerary?.id === itineraryId ? activeStillExists : state.itinerary,
       };
     });
+  },
+
+  rateItinerary: async (itineraryId, rating, ratingDescription) => {
+    const updated = await ItineraryService.rateItinerary(itineraryId, rating, ratingDescription);
+    set(state => ({
+      itinerary: state.itinerary?.id === itineraryId ? updated : state.itinerary,
+      itineraries: state.itineraries.map(i => i.id === itineraryId ? updated : i),
+    }));
   },
 
   setHighlightedPlace: (index) => set({ highlightedPlaceIndex: index }),

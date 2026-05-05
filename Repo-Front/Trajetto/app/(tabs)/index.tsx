@@ -8,12 +8,132 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
+
+function RatingSection({ itinerary }: { itinerary: Itinerary }) {
+  const rateItinerary = useItineraryStore(s => s.rateItinerary);
+  const [desc, setDesc] = useState(itinerary.ratingDescription ?? '');
+  const [savingRating, setSavingRating] = useState(false);
+  const [savingDesc, setSavingDesc] = useState(false);
+  const currentRating = itinerary.rating ?? 0;
+  const descChanged = desc !== (itinerary.ratingDescription ?? '');
+
+  const handleStarPress = async (star: number) => {
+    const newRating = currentRating === star ? 0 : star;
+    setSavingRating(true);
+    try {
+      await rateItinerary(itinerary.id, newRating, itinerary.ratingDescription ?? null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar a avaliação.');
+    } finally {
+      setSavingRating(false);
+    }
+  };
+
+  const handleSaveDesc = async () => {
+    setSavingDesc(true);
+    try {
+      await rateItinerary(itinerary.id, itinerary.rating ?? null, desc || null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar o comentário.');
+    } finally {
+      setSavingDesc(false);
+    }
+  };
+
+  return (
+    <View style={ratingStyles.container}>
+      <View style={ratingStyles.starsRow}>
+        <Text style={ratingStyles.label}>Avaliação</Text>
+        {savingRating ? (
+          <ActivityIndicator size="small" color="#f59e0b" />
+        ) : (
+          <View style={ratingStyles.stars}>
+            {[1, 2, 3, 4, 5].map(star => (
+              <TouchableOpacity key={star} onPress={() => handleStarPress(star)} activeOpacity={0.7}>
+                <Text style={star <= currentRating ? ratingStyles.starFilled : ratingStyles.starEmpty}>
+                  {star <= currentRating ? '★' : '☆'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+      <TextInput
+        style={ratingStyles.descInput}
+        placeholder="Comentário sobre o roteiro..."
+        placeholderTextColor="#b0bec5"
+        value={desc}
+        onChangeText={setDesc}
+        multiline
+        numberOfLines={2}
+      />
+      {descChanged && (
+        <TouchableOpacity
+          style={ratingStyles.saveBtn}
+          onPress={handleSaveDesc}
+          disabled={savingDesc}
+          activeOpacity={0.8}
+        >
+          {savingDesc
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={ratingStyles.saveBtnText}>Salvar comentário</Text>
+          }
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const ratingStyles = StyleSheet.create({
+  container: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f4f8',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a9ab0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  stars: { flexDirection: 'row', gap: 4 },
+  starFilled: { fontSize: 24, color: '#f59e0b' },
+  starEmpty: { fontSize: 24, color: '#d1d5db' },
+  descInput: {
+    borderWidth: 1,
+    borderColor: '#e8edf3',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    color: '#1a1a1a',
+    backgroundColor: '#f8fafc',
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  saveBtn: {
+    marginTop: 8,
+    backgroundColor: '#023665',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+});
 
 const PRIMARY = '#023665';
 
@@ -255,6 +375,7 @@ export default function RoteirosTab() {
                     })}
                 </View>
               )}
+              {!selectMode && <RatingSection itinerary={itinerary} />}
             </TouchableOpacity>
 
             {!selectMode && (
@@ -280,49 +401,54 @@ export default function RoteirosTab() {
               <>
                 <Text style={[styles.sectionLabel, { marginTop: 8 }]}>OUTROS ROTEIROS</Text>
                 {itineraries.filter(i => !i.active).map(item => (
-                  <TouchableOpacity
+                  <View
                     key={item.id}
                     style={[styles.inactiveCard, selectMode && selectedIds.has(item.id) && styles.cardSelected]}
-                    onPress={() => selectMode ? toggleSelect(item.id) : undefined}
-                    onLongPress={() => !selectMode && enterSelectMode(item.id)}
-                    activeOpacity={selectMode ? 0.9 : 1}
                   >
-                    {selectMode && <Checkbox id={item.id} />}
-                    <View style={styles.inactiveCardInfo}>
-                      <Text style={styles.inactiveCardTitle} numberOfLines={1}>
-                        📍 {item.places[0]?.name ?? 'Roteiro'}
-                      </Text>
-                      <Text style={styles.inactiveCardMeta}>
-                        {item.places.length} paradas · {formatDate(item.startDate)}
-                      </Text>
-                    </View>
-                    {!selectMode && (
-                      <>
-                        <TouchableOpacity
-                          style={styles.activateBtn}
-                          onPress={() => handleActivate(item.id)}
-                          disabled={activating === item.id}
-                          activeOpacity={0.8}
-                        >
-                          {activating === item.id
-                            ? <ActivityIndicator size="small" color={PRIMARY} />
-                            : <Text style={styles.activateBtnText}>Ativar</Text>
-                          }
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.inactiveDeleteBtn}
-                          onPress={() => handleDelete(item.id)}
-                          disabled={deleting === item.id}
-                          activeOpacity={0.8}
-                        >
-                          {deleting === item.id
-                            ? <ActivityIndicator size="small" color="#EF4444" />
-                            : <Text style={styles.inactiveDeleteIcon}>🗑️</Text>
-                          }
-                        </TouchableOpacity>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.inactiveCardRow}
+                      onPress={() => selectMode ? toggleSelect(item.id) : undefined}
+                      onLongPress={() => !selectMode && enterSelectMode(item.id)}
+                      activeOpacity={selectMode ? 0.9 : 1}
+                    >
+                      {selectMode && <Checkbox id={item.id} />}
+                      <View style={styles.inactiveCardInfo}>
+                        <Text style={styles.inactiveCardTitle} numberOfLines={1}>
+                          📍 {item.places[0]?.name ?? 'Roteiro'}
+                        </Text>
+                        <Text style={styles.inactiveCardMeta}>
+                          {item.places.length} paradas · {formatDate(item.startDate)}
+                        </Text>
+                      </View>
+                      {!selectMode && (
+                        <>
+                          <TouchableOpacity
+                            style={styles.activateBtn}
+                            onPress={() => handleActivate(item.id)}
+                            disabled={activating === item.id}
+                            activeOpacity={0.8}
+                          >
+                            {activating === item.id
+                              ? <ActivityIndicator size="small" color={PRIMARY} />
+                              : <Text style={styles.activateBtnText}>Ativar</Text>
+                            }
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.inactiveDeleteBtn}
+                            onPress={() => handleDelete(item.id)}
+                            disabled={deleting === item.id}
+                            activeOpacity={0.8}
+                          >
+                            {deleting === item.id
+                              ? <ActivityIndicator size="small" color="#EF4444" />
+                              : <Text style={styles.inactiveDeleteIcon}>🗑️</Text>
+                            }
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    {!selectMode && <RatingSection itinerary={item} />}
+                  </View>
                 ))}
               </>
             )}
@@ -494,8 +620,10 @@ const styles = StyleSheet.create({
   inactiveCard: {
     backgroundColor: '#fff', borderRadius: 14,
     paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10,
-    flexDirection: 'row', alignItems: 'center', gap: 10,
     shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+  },
+  inactiveCardRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
   },
   inactiveCardInfo: { flex: 1 },
   inactiveCardTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a1a', marginBottom: 3 },

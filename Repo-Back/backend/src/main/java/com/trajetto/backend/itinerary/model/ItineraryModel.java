@@ -42,4 +42,10 @@ public class ItineraryModel {
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL)
     private List<PlaceModel> places;
 
+    @Column(name = "rating")
+    private Integer rating;
+
+    @Column(name = "rating_description", columnDefinition = "TEXT")
+    private String ratingDescription;
+
 }

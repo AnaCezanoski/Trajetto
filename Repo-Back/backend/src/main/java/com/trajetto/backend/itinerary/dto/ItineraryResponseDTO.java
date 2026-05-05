@@ -15,4 +15,6 @@ public class ItineraryResponseDTO {
     private List<PlaceResponseDTO> places;
     private Double originLatitude;
     private Double originLongitude;
+    private Integer rating;
+    private String ratingDescription;
 }

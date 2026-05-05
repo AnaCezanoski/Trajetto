@@ -2,6 +2,7 @@ package com.trajetto.backend.itinerary.controller;
 
 import com.trajetto.backend.itinerary.dto.GenerateItineraryRequestDTO;
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
+import com.trajetto.backend.itinerary.dto.RatingRequestDTO;
 import com.trajetto.backend.itinerary.service.ItineraryService;
 import java.util.List;
 import lombok.Getter;
@@ -71,6 +72,17 @@ public class ItineraryController {
             return ResponseEntity.ok(itineraryService.activateItinerary(itineraryId, userId));
         } catch (RuntimeException e) {
             if ("Forbidden".equals(e.getMessage())) return ResponseEntity.status(403).build();
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PatchMapping("/{itineraryId}/rating")
+    public ResponseEntity<ItineraryResponseDTO> updateRating(
+            @PathVariable Long itineraryId,
+            @RequestBody RatingRequestDTO req) {
+        try {
+            return ResponseEntity.ok(itineraryService.updateRating(itineraryId, req));
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
