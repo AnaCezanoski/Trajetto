@@ -18,6 +18,7 @@ public class UserDTO {
     private String telephone;
     private String email;
     private String country;
+    private String nickname;
     private String password;
     private boolean isAdmin;
 //    private String profilePicture;

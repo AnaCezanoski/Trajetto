@@ -8,6 +8,7 @@ export interface User {
   telephone: string | null;
   isAdmin: boolean;
   travelerProfile: string | null;
+  nickname: string | null;
 }
 
 export interface LoginRequest {
@@ -23,4 +24,5 @@ export interface RegisterRequest {
   birthDate: string;
   country: string;
   telephone: string;
+  nickname?: string;
 }

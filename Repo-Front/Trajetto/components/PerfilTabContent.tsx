@@ -78,6 +78,9 @@ export default function PerfilTabContent() {
             {user?.firstName} {user?.lastName}
           </Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
+          {user?.nickname && (
+            <Text style={styles.userNickname}>@{user.nickname}</Text>
+          )}
           {user?.travelerProfile && user.travelerProfile !== 'SKIPPED' && (
             <View style={styles.profileBadge}>
               <Text style={styles.profileBadgeText}>🧳 {user.travelerProfile}</Text>
@@ -144,7 +147,8 @@ const styles = StyleSheet.create({
   },
   avatarEmoji: { fontSize: 48 },
   userName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
-  userEmail: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 12 },
+  userEmail: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginBottom: 4 },
+  userNickname: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
   profileBadge: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,

@@ -49,6 +49,9 @@ public class UserModel {
     @Column(name = "country")
     private String country;
 
+    @Column(name = "nickname")
+    private String nickname;
+
     @JsonIgnore
     @Column(name = "password")
     private String password;

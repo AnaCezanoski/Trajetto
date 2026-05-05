@@ -80,6 +80,7 @@ public class DefaultUserService implements UserService {
                     existingUser.setTravelerProfile(userModel.getTravelerProfile().trim());
                     existingUser.setTelephone(userModel.getTelephone().trim());
                     existingUser.setBirthDate(userModel.getBirthDate());
+                    existingUser.setNickname(userModel.getNickname());
                     //existingUser.setProfilePictureUrl(userModel.getProfilePictureUrl());
                     return userRepository.save(existingUser);
                 })

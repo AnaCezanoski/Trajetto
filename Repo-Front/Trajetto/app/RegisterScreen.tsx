@@ -39,6 +39,7 @@ export default function RegisterScreen() {
   const [birthDate, setBirthDate] = useState('');
   const [country, setCountry] = useState('');
   const [telephone, setTelephone] = useState('');
+  const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCountries, setShowCountries] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,7 +57,7 @@ export default function RegisterScreen() {
     setErrors({});
     try {
       setLoading(true);
-      await register({ firstName, lastName, email, password, birthDate: toBirthDateISO(birthDate), country, telephone });
+      await register({ firstName, lastName, email, password, birthDate: toBirthDateISO(birthDate), country, telephone, nickname: nickname || undefined });
       Alert.alert('Sucesso', 'Conta criada! Faça login');
       router.push('/LoginScreen');
     } catch {
@@ -101,6 +102,17 @@ export default function RegisterScreen() {
               />
             </Field>
           </View>
+
+          <Field label="Apelido (Nickname)">
+            <TextInput
+              style={styles.input}
+              placeholder="Como quer ser chamado?"
+              placeholderTextColor={PLACEHOLDER}
+              value={nickname}
+              onChangeText={setNickname}
+              autoCapitalize="none"
+            />
+          </Field>
 
           <View style={styles.row}>
             <Field label="Data de nascimento" error={errors.birthDate}>

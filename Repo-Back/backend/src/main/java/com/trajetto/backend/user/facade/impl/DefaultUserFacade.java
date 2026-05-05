@@ -50,6 +50,7 @@ public class DefaultUserFacade implements UserFacade {
         target.setBirthDate(source.getBirthDate());
         target.setTelephone(source.getTelephone());
         target.setCountry(source.getCountry());
+        target.setNickname(source.getNickname());
         target.setEmail(source.getEmail());
         target.setPassword(source.getPassword());
         target.setIsAdmin(source.getIsAdmin());
@@ -69,6 +70,7 @@ public class DefaultUserFacade implements UserFacade {
         target.setTelephone(source.getTelephone());
         target.setEmail(source.getEmail());
         target.setCountry(source.getCountry());
+        target.setNickname(source.getNickname());
         target.setPassword(source.getPassword());
         target.setIsAdmin(source.getIsAdmin());
         //target.setProfilePictureUrl(source.getProfilePicture());
@@ -91,6 +93,7 @@ public class DefaultUserFacade implements UserFacade {
         target.setLastName(source.getLastName());
         target.setBirthDate(source.getBirthDate());
         target.setCountry(source.getCountry());
+        target.setNickname(source.getNickname());
         target.setEmail(source.getEmail());
         target.setIsAdmin(source.getIsAdmin());
         //target.setProfilePictureUrl(source.getProfilePictureUrl());
@@ -177,6 +180,7 @@ public class DefaultUserFacade implements UserFacade {
         if (dto.getEmail() != null) user.setEmail(dto.getEmail());
         if (dto.getBirthDate() != null) user.setBirthDate(dto.getBirthDate());
         if (dto.getCountry() != null) user.setCountry(dto.getCountry());
+        if (dto.getNickname() != null) user.setNickname(dto.getNickname());
 
         UserModel updated = userService.updateUser(user);
 

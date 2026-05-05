@@ -16,6 +16,7 @@ public class UserUpdateDTO {
     private String travelerProfile;
     private String telephone;
     private String country;
+    private String nickname;
     private String email;
     private LocalDate birthDate;
 //    private String profilePicture;

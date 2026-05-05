@@ -27,13 +27,14 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 }
 
 export default function ProfileScreen() {
-  const { logout } = useAuth();
+  const { logout, refreshUser } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [country, setCountry] = useState('');
   const [telephone, setTelephone] = useState('');
+  const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [showCountries, setShowCountries] = useState(false);
@@ -48,6 +49,7 @@ export default function ProfileScreen() {
       setBirthDate(u.birthDate ? fromBirthDateISO(u.birthDate) : '');
       setCountry(u.country ?? '');
       setTelephone(u.telephone ?? '');
+      setNickname(u.nickname ?? '');
     }).finally(() => setFetching(false));
   }, []);
 
@@ -62,7 +64,8 @@ export default function ProfileScreen() {
     setErrors({});
     try {
       setLoading(true);
-      await api.put('/user/me', { firstName, lastName, email, birthDate: toBirthDateISO(birthDate), country, telephone });
+      await api.put('/user/me', { firstName, lastName, email, birthDate: toBirthDateISO(birthDate), country, telephone, nickname: nickname || undefined });
+      await refreshUser();
       Alert.alert('Sucesso', 'Perfil atualizado!');
     } catch {
       Alert.alert('Erro', 'Não foi possível atualizar');
@@ -113,6 +116,17 @@ export default function ProfileScreen() {
               />
             </Field>
           </View>
+
+          <Field label="Apelido (Nickname)">
+            <TextInput
+              style={styles.input}
+              placeholder="Como quer ser chamado?"
+              placeholderTextColor={PLACEHOLDER}
+              value={nickname}
+              onChangeText={setNickname}
+              autoCapitalize="none"
+            />
+          </Field>
 
           <View style={styles.row}>
             <Field label="Data de nascimento" error={errors.birthDate}>
