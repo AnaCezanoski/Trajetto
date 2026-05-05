@@ -1,7 +1,7 @@
 package com.trajetto.backend.itinerary.service;
 
-import com.trajetto.backend.itinerary.data.RomePlacesData;
-import com.trajetto.backend.itinerary.data.RomePlacesData.RomePlace;
+import com.trajetto.backend.itinerary.data.RomePlacesLoader;
+import com.trajetto.backend.itinerary.data.RomePlacesLoader.RomePlace;
 import com.trajetto.backend.itinerary.dto.GenerateItineraryRequestDTO;
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
 import com.trajetto.backend.itinerary.dto.PlaceResponseDTO;
@@ -29,6 +29,9 @@ public class ItineraryService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RomePlacesLoader romePlacesLoader;
 
     public ItineraryModel createItineraryMock(Long userId) {
         UserModel user = userRepository.findById(userId)
@@ -117,7 +120,7 @@ public class ItineraryService {
         // Score each POI
         record ScoredPlace(RomePlace place, double score) {}
 
-        List<ScoredPlace> scored = RomePlacesData.PLACES.stream().map(place -> {
+        List<ScoredPlace> scored = romePlacesLoader.getPlaces().stream().map(place -> {
             double profileScore = hasProfile && place.profiles().contains(profile) ? 3.0 : 0.0;
             double randomScore = random.nextDouble() * 2.0;
             double distKm = haversineKm(req.getStartLatitude(), req.getStartLongitude(),
@@ -181,6 +184,9 @@ public class ItineraryService {
             p.setLongitude(rp.longitude());
             p.setEstimatedVisitTime(times[i]);
             p.setOrderIndex(i);
+            p.setOpeningHours(rp.openingHours().isBlank() ? null : rp.openingHours());
+            p.setCategory(rp.category().isBlank() ? null : rp.category());
+            p.setFee(rp.fee().isBlank() ? null : rp.fee());
             p.setItinerary(itinerary);
             places.add(p);
         }
@@ -197,6 +203,31 @@ public class ItineraryService {
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    public List<ItineraryResponseDTO> getAllItineraries(Long userId) {
+        UserModel user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return itineraryRepository.findByUserOrderByStartDateDesc(user)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public ItineraryResponseDTO activateItinerary(Long itineraryId, Long userId) {
+        UserModel user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        ItineraryModel target = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+        if (!target.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Forbidden");
+        }
+        itineraryRepository.findByUserOrderByStartDateDesc(user).forEach(it -> {
+            it.setActive(it.getId().equals(itineraryId));
+            itineraryRepository.save(it);
+        });
+        target.setActive(true);
+        return toDTO(target);
     }
 
     public void deleteItinerary(Long itineraryId, Long userId) {
@@ -232,6 +263,9 @@ public class ItineraryService {
         dto.setLongitude(model.getLongitude());
         dto.setEstimatedVisitTime(model.getEstimatedVisitTime());
         dto.setOrderIndex(model.getOrderIndex());
+        dto.setOpeningHours(model.getOpeningHours());
+        dto.setCategory(model.getCategory());
+        dto.setFee(model.getFee());
         return dto;
     }
 }

@@ -158,11 +158,9 @@ Caso tenha um emulador configurado:
 ## BACKEND
 
 ## Pré-requisitos
-- Node.js
-- Java JDK 17+
+- Java 21
 - MySQL
-- Git
-- Android Studio ou Expo
+- Maven (ou use o wrapper `mvnw` incluído no projeto)
 
 ## Clonar o repositório
 
@@ -170,20 +168,26 @@ Caso tenha um emulador configurado:
 git clone https://github.com/AnaCezanoski/Trajetto.git
 cd Trajetto
 ```
+
 ## Executar o Backend
 
 ```bash
-cd backend
+cd Repo-Back/backend
 ./mvnw spring-boot:run
 ```
+
+> No Windows: `mvnw.cmd spring-boot:run`
+
+Certifique-se de ter o MySQL rodando e as credenciais configuradas em `src/main/resources/secrets.properties`.
+
 ## O servidor iniciará em
-```bash
+```
 http://localhost:8080
 ```
 
 ## Executar o Mobile
 ```bash
-cd mobile
+cd Repo-Front/Trajetto
 npm install
-npm start
+npx expo start
 ```

@@ -39,6 +39,15 @@ public class PlaceModel {
     @Column(name = "order_index")
     private Integer OrderIndex;
 
+    @Column(name = "opening_hours", length = 256)
+    private String openingHours;
+
+    @Column(name = "category")
+    private String category;
+
+    @Column(name = "fee")
+    private String fee;
+
     @ManyToOne
     @JoinColumn(name = "itinerary_id")
     private ItineraryModel itinerary;
