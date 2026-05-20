@@ -18,7 +18,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
-    const publicRoutes = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen'];
+    const publicRoutes = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen', 'VerifyEmailScreen'];
     const inPublic = publicRoutes.includes(segments[0]);
     const inQuizFlow  = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(segments[0] as string);
     const inTabs      = segments[0] === '(tabs)';
@@ -47,6 +47,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(itinerary)" options={{ headerShown: false }} />
         <Stack.Screen name="LoginScreen"  options={{ headerShown: false }} />
         <Stack.Screen name="RegisterScreen"  options={{ title: 'Criar Conta', headerBackTitle: '' }} />
+        <Stack.Screen name="VerifyEmailScreen" options={{ title: 'Verificar Email', headerBackTitle: '' }} />
         <Stack.Screen name="UserListScreen"  options={{ title: 'Usuários', headerBackTitle: '' }} />
         <Stack.Screen name="UserDetailScreen" options={{ title: 'Editar Usuário', headerBackTitle: '' }} />
         <Stack.Screen name="ForgotPasswordScreen" options={{ title: 'Esqueci a Senha', headerBackTitle: '' }} />

@@ -4,6 +4,7 @@ import com.trajetto.backend.security.UserToken;
 import com.trajetto.backend.user.dto.*;
 import com.trajetto.backend.user.facade.UserFacade;
 import com.trajetto.backend.user.model.UserModel;
+import com.trajetto.backend.user.repository.UserRepository;
 import com.trajetto.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.annotation.security.PermitAll;
@@ -40,6 +41,9 @@ public class UserController {
 
     @Autowired
     private UserFacade userFacade;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @SecurityRequirement(name = "AuthServer")
     @PreAuthorize("hasRole('ADMIN')")
@@ -187,6 +191,19 @@ public class UserController {
         }
         logger.info("User {} logged out", userToken.getId());
         return ResponseEntity.ok().body("Logout successful");
+    }
+
+    @PermitAll
+    @PostMapping("/verify")
+    public ResponseEntity<?> verifyEmail(@RequestParam String email, @RequestParam String code) {
+        UserModel user = userRepository.findByEmail(email);
+        if (user != null && code.equals(user.getVerificationCode())) {
+            user.setVerified(true);
+            user.setVerificationCode(null);
+            userRepository.save(user);
+            return ResponseEntity.ok("Email verificado com sucesso.");
+        }
+        return ResponseEntity.badRequest().body("Código inválido ou usuário não encontrado.");
     }
 
 //    @SecurityRequirement(name = "AuthServer")

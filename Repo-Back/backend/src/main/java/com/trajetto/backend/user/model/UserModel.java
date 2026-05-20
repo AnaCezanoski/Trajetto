@@ -53,6 +53,12 @@ public class UserModel {
     @Column(name = "password")
     private String password;
 
+    @Column(name = "is_verified")
+    private boolean isVerified = false;
+
+    @Column(name = "verification_code")
+    private String verificationCode;
+
 //    @Column(name = "cpf", nullable = false, unique = true)
 //    private String cpf;
 //

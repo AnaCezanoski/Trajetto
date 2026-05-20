@@ -120,9 +120,9 @@ public class DefaultUserFacade implements UserFacade {
 
     @Override
     public List<UserResponseDTO> createUser(UserModel userModel) throws Exception {
-        if (checkIfUserEmailExists(userModel.getEmail())){
-            throw new Exception("User email already being used");
-        }
+//        if (checkIfUserEmailExists(userModel.getEmail())){
+//            throw new Exception("User email already being used");
+//        }
 
 //        if (checkIfUserCpfExists(userModel.getCpf())){
 //            throw new Exception("User cpf already being used");

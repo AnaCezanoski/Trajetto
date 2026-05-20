@@ -10,6 +10,8 @@ import lombok.AllArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.modelmapper.ModelMapper;
+import org.springframework.mail.SimpleMailMessage; // NOVO IMPORT
+import org.springframework.mail.javamail.JavaMailSender; // NOVO IMPORT
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import org.springframework.util.ObjectUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random; // NOVO IMPORT
 
 @Service
 @AllArgsConstructor
@@ -29,6 +32,9 @@ public class DefaultUserService implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final Jwt jwt;
     private final ModelMapper modelMapper;
+
+    // NOVO: Injetado automaticamente pelo @AllArgsConstructor
+    private final JavaMailSender mailSender;
 
     @Override
     public List<UserModel> getAllUsers() {
@@ -51,19 +57,44 @@ public class DefaultUserService implements UserService {
     public List<UserModel> createUser(UserModel userModel) {
         if (!ObjectUtils.isEmpty(userModel)) {
             try {
+                String email = userModel.getEmail().trim().toLowerCase();
+
+                UserModel existingUser = userRepository.findByEmail(email);
+
+                if (existingUser != null) {
+                    if (existingUser.isVerified()) {
+                        throw new RuntimeException("Este e-mail já está em uso.");
+                    } else {
+                        userModel.setId(existingUser.getId());
+                    }
+                }
+
                 userModel.setFirstName(capitalizeWords(userModel.getFirstName().trim()));
                 userModel.setLastName(capitalizeWords(userModel.getLastName().trim()));
                 userModel.setCountry(capitalizeWords(userModel.getCountry().trim()));
-
-                userModel.setEmail(userModel.getEmail().trim().toLowerCase());
-
+                userModel.setEmail(email);
                 userModel.setPassword(passwordEncoder.encode(userModel.getPassword()));
 
+                String code = String.format("%06d", new Random().nextInt(999999));
+                userModel.setVerificationCode(code);
+                userModel.setVerified(false);
+
                 UserModel saved = userRepository.save(userModel);
+
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setTo(saved.getEmail());
+                message.setSubject("Código de Verificação - Trajetto");
+                message.setText("Olá, " + saved.getFirstName() + "!\n\n"
+                        + "Bem-vindo ao Trajetto. Seu código de verificação é:\n\n"
+                        + code + "\n\n"
+                        + "Insira este código no aplicativo para ativar sua conta.");
+                mailSender.send(message);
+
                 return Collections.singletonList(saved);
 
             } catch (Exception e) {
                 logger.error("Unable to save UserModel", e);
+                throw new RuntimeException(e.getMessage());
             }
         }
         return null;
@@ -104,6 +135,11 @@ public class DefaultUserService implements UserService {
         if (userModel == null || !passwordEncoder.matches(rawPassword, userModel.getPassword())) {
             throw new BadCredentialsException("Credenciais inválidas");
         }
+
+        if (!userModel.isVerified() && !userModel.getEmail().equals("admin@authserver.com.br")) {
+            throw new RuntimeException("Conta não verificada. Por favor, insira o código enviado por email.");
+        }
+
         UserResponseDTO userResponseDTO = modelMapper.map(userModel, UserResponseDTO.class);
         return new LoginResponse(jwt.createToken(userModel), userResponseDTO);
     }
