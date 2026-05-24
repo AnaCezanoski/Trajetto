@@ -16,80 +16,6 @@ import { useAuth } from '../../context/AuthContext';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
 
-function RatingSection({ itinerary }: { itinerary: Itinerary }) {
-  const rateItinerary = useItineraryStore(s => s.rateItinerary);
-  const [desc, setDesc] = useState(itinerary.ratingDescription ?? '');
-  const [savingRating, setSavingRating] = useState(false);
-  const [savingDesc, setSavingDesc] = useState(false);
-  const currentRating = itinerary.rating ?? 0;
-  const descChanged = desc !== (itinerary.ratingDescription ?? '');
-
-  const handleStarPress = async (star: number) => {
-    const newRating = currentRating === star ? 0 : star;
-    setSavingRating(true);
-    try {
-      await rateItinerary(itinerary.id, newRating, itinerary.ratingDescription ?? null);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar a avaliação.');
-    } finally {
-      setSavingRating(false);
-    }
-  };
-
-  const handleSaveDesc = async () => {
-    setSavingDesc(true);
-    try {
-      await rateItinerary(itinerary.id, itinerary.rating ?? null, desc || null);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar o comentário.');
-    } finally {
-      setSavingDesc(false);
-    }
-  };
-
-  return (
-    <View style={ratingStyles.container}>
-      <View style={ratingStyles.starsRow}>
-        <Text style={ratingStyles.label}>Avaliação</Text>
-        {savingRating ? (
-          <ActivityIndicator size="small" color="#f59e0b" />
-        ) : (
-          <View style={ratingStyles.stars}>
-            {[1, 2, 3, 4, 5].map(star => (
-              <TouchableOpacity key={star} onPress={() => handleStarPress(star)} activeOpacity={0.7}>
-                <Text style={star <= currentRating ? ratingStyles.starFilled : ratingStyles.starEmpty}>
-                  {star <= currentRating ? '★' : '☆'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-      <TextInput
-        style={ratingStyles.descInput}
-        placeholder="Comentário sobre o roteiro..."
-        placeholderTextColor="#b0bec5"
-        value={desc}
-        onChangeText={setDesc}
-        multiline
-        numberOfLines={2}
-      />
-      {descChanged && (
-        <TouchableOpacity
-          style={ratingStyles.saveBtn}
-          onPress={handleSaveDesc}
-          disabled={savingDesc}
-          activeOpacity={0.8}
-        >
-          {savingDesc
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={ratingStyles.saveBtnText}>Salvar comentário</Text>
-          }
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
 
 const ratingStyles = StyleSheet.create({
   container: {
@@ -375,7 +301,6 @@ export default function RoteirosTab() {
                     })}
                 </View>
               )}
-              {!selectMode && <RatingSection itinerary={itinerary} />}
             </TouchableOpacity>
 
             {!selectMode && (
@@ -447,7 +372,6 @@ export default function RoteirosTab() {
                         </>
                       )}
                     </TouchableOpacity>
-                    {!selectMode && <RatingSection itinerary={item} />}
                   </View>
                 ))}
               </>

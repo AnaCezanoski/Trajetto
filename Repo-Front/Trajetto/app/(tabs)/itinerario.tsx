@@ -4,14 +4,24 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Keyboard,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { isPlacePast } from '../utils/isPlacePast';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import StarRating from '@/components/Rating';
+import { RatingService, RatingSummary } from '@/services/ratingService';
+import { useAuth } from '@/context/AuthContext';
 
 const PRIMARY = '#023665';
 
@@ -24,14 +34,21 @@ const formatDate = (dateStr: string) => {
 const formatTime = (time: string) => time?.slice(0, 5) ?? '';
 
 export default function ItinerarioTab() {
+  const { user } = useAuth();
+  const commentInputRef = useRef<TextInput>(null);
+  const [allRatings, setAllRatings] = React.useState<any[]>([]);
+  const [isRatingOpen, setIsRatingOpen] = React.useState(false);
+  const [ratingData, setRatingData] = React.useState<RatingSummary>();
+  const [myRating, setMyRating] = React.useState<any>(null);
+  const [ratingValue, setRatingValue] = React.useState(0);
+  const [comment, setComment] = React.useState('');
+
   const { itinerary, loading, highlightedPlaceIndex, setHighlightedPlace, setFocusedMapPlace } = useItineraryStore();
   const [layoutReady, setLayoutReady] = React.useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
-  // Track each card's y offset
   const cardOffsets = useRef<number[]>([]);
 
-  // Scroll to highlighted card when coming from map
   useEffect(() => {
     if (highlightedPlaceIndex === null) return;
     const offset = cardOffsets.current[highlightedPlaceIndex];
@@ -45,34 +62,78 @@ export default function ItinerarioTab() {
     return () => clearTimeout(timer);
   }, [highlightedPlaceIndex]);
 
-  
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [selectedPlace, setSelectedPlace] = React.useState<any>(null);
 
-useFocusEffect(
-  useCallback(() => {
-    if (!layoutReady) return;
-    if (!itinerary?.places?.length) return;
+  const snapPoints = React.useMemo(() => ['45%', '90%'], []);
 
-    const sorted = [...itinerary.places].sort(
-      (a, b) => a.orderIndex - b.orderIndex
-    );
+  const openBottomSheet = (place: any) => {
+    setSelectedPlace(place);
+    setIsRatingOpen(false);
+    setRatingValue(0);
+    setComment('');
+    setMyRating(null);
+    bottomSheetRef.current?.expand();
+    setAllRatings([]);
+  };
 
-    const firstUpcomingIndex = sorted.findIndex(place => {
-      return !isPlacePast(itinerary.startDate, place.estimatedVisitTime);
-    });
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
-    if (firstUpcomingIndex === -1) return;
 
-    requestAnimationFrame(() => {
-      const offset = cardOffsets.current[firstUpcomingIndex];
-      if (offset == null) return;
+  useEffect(() => {
+    if (!selectedPlace?.xid) return;
 
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, offset - 100),
-        animated: true,
+    RatingService.getSummary(selectedPlace.xid)
+      .then(setRatingData)
+      .catch(console.log);
+
+    RatingService.getByPlace(selectedPlace.xid)
+      .then((ratings) => {
+        setAllRatings(ratings);
+        const mine = ratings.find(r => r.userId === user?.id);
+        setMyRating(mine ?? null);
       });
-    });
-  }, [layoutReady, itinerary])
-);
+  }, [selectedPlace]);
+
+
+
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!layoutReady) return;
+      if (!itinerary?.places?.length) return;
+
+      const sorted = [...itinerary.places].sort(
+        (a, b) => a.orderIndex - b.orderIndex
+      );
+
+      const firstUpcomingIndex = sorted.findIndex(place => {
+        return !isPlacePast(itinerary.startDate, place.estimatedVisitTime);
+      });
+
+      if (firstUpcomingIndex === -1) return;
+
+      requestAnimationFrame(() => {
+        const offset = cardOffsets.current[firstUpcomingIndex];
+        if (offset == null) return;
+
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, offset - 100),
+          animated: true,
+        });
+      });
+    }, [layoutReady, itinerary])
+  );
 
 
 
@@ -147,13 +208,13 @@ useFocusEffect(
               key={idx}
               style={styles.timelineRow}
               onLayout={e => {
-  cardOffsets.current[idx] = e.nativeEvent.layout.y;
+                cardOffsets.current[idx] = e.nativeEvent.layout.y;
 
-  // verifica se todos os cards já foram medidos
-  if (cardOffsets.current.length === sorted.length) {
-    setLayoutReady(true);
-  }
-}}
+                // verifica se todos os cards já foram medidos
+                if (cardOffsets.current.length === sorted.length) {
+                  setLayoutReady(true);
+                }
+              }}
             >
               {/* Rail */}
               <View style={styles.rail}>
@@ -191,9 +252,9 @@ useFocusEffect(
                       <Text style={styles.categoryText}>
                         {place.category === 'museum' ? '🏛️ Museum'
                           : place.category === 'attraction' ? '🎯 Attraction'
-                          : place.category === 'park' ? '🌳 Park'
-                          : place.category === 'church' ? '⛪ Church'
-                          : `📍 ${place.category.charAt(0).toUpperCase() + place.category.slice(1)}`}
+                            : place.category === 'park' ? '🌳 Park'
+                              : place.category === 'church' ? '⛪ Church'
+                                : `📍 ${place.category.charAt(0).toUpperCase() + place.category.slice(1)}`}
                       </Text>
                     </View>
                   ) : null}
@@ -210,13 +271,255 @@ useFocusEffect(
                     <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
                   </View>
                 ) : null}
-                <Text style={[styles.mapHint, { color }]}>View on map ↗</Text>
+                <View style={styles.infoSection}>
+                  <Text style={[styles.mapHint, { color }]}>View on map ↗</Text>
+                  <TouchableOpacity style={{ padding: 5, flexDirection: 'row', alignItems: "center", gap: 5 }} onPress={() => openBottomSheet(place)}>
+                    <Text style={[styles.mapHint, { color }]}>Sobre</Text>
+                    <IconSymbol size={12} name="info.circle" color={color} />
+                  </TouchableOpacity>
+
+                </View>
               </TouchableOpacity>
             </View>
           );
         })}
       </View>
     </ScrollView>
+
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={-1}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
+    >
+      <BottomSheetView style={styles.bottomSheetContent}>
+        <Pressable
+          style={{ flex: 1 }}
+          onPress={Keyboard.dismiss}
+        >
+          {selectedPlace && (
+            <>
+              <Text style={[styles.bottomSheetTextPrimary, { marginBottom: 12 }]}>
+                {selectedPlace.name}
+              </Text>
+
+              {selectedPlace.category && (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 12 }}>
+                    <Text style={styles.bottomSheetTextSecondary}>
+                      Categoria:
+                    </Text>
+                    <Text style={styles.bottomSheetTextTertiary}>
+                      {selectedPlace.category}
+                    </Text>
+                  </View>
+
+                  <View style={styles.divider} />
+                </>
+              )}
+
+              {selectedPlace.address && (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                    <View style={{ backgroundColor: "#dde5ec", padding: 8, borderRadius: 8 }}>
+                      <IconSymbol size={18} name="mappin.and.ellipse" color={PRIMARY} weight={'bold'} />
+                    </View>
+                    <Text style={styles.bottomSheetTextTertiary}>
+                      {selectedPlace.address}
+                    </Text>
+                  </View>
+                  <View style={styles.divider} />
+                </>
+              )}
+
+              {selectedPlace.openingHours && (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                    <View style={{ backgroundColor: "#dde5ec", padding: 8, borderRadius: 8 }}>
+                      <IconSymbol size={18} name="clock" color={PRIMARY} weight={'bold'} />
+                    </View>
+                    <Text style={styles.bottomSheetTextTertiary}>
+                      {selectedPlace.openingHours}
+                    </Text>
+                  </View>
+                  <View style={styles.divider} />
+                </>
+              )}
+
+
+              <TouchableOpacity
+                onPress={() => setIsRatingOpen(!isRatingOpen)}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 30 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                    <View style={{ backgroundColor: "#dde5ec", padding: 8, borderRadius: 8 }}>
+                      <IconSymbol size={18} name="star" color={PRIMARY} weight={'bold'} />
+                    </View>
+                    <Text style={styles.bottomSheetTextTertiary}>
+                      {ratingData?.average?.toFixed(1) ?? '0.0'}
+                    </Text>
+                    <StarRating
+                      value={ratingData?.average ?? 0}
+                      size={18}
+                      onChange={() => { }}
+                      readonly
+                    />
+                    <Text style={styles.bottomSheetTextTertiary}>
+                      {ratingData?.count ?? 0} visitaram
+                    </Text>
+                  </View>
+                  <IconSymbol size={18} name={isRatingOpen ? "chevron.up" : "chevron.down"} color={PRIMARY} weight={'bold'} />
+                </View>
+                <View style={styles.divider} />
+              </TouchableOpacity>
+              {isRatingOpen && (
+                <>
+                  <View style={styles.ratingDropdown}>
+                    <Text style={styles.ratingTitle}>Avaliar lugar</Text>
+
+                    <StarRating
+                      value={ratingValue}
+                      size={22}
+                      onChange={(rating) => setRatingValue(rating)}
+                    />
+
+                    <TextInput
+                      ref={commentInputRef}
+                      value={comment}
+                      onChangeText={setComment}
+                      placeholder="Escreva um comentário..."
+                      placeholderTextColor="#9aa4b2"
+                      style={styles.ratingInput}
+                      multiline
+                    />
+
+                    <TouchableOpacity
+                      style={styles.ratingButton}
+                      onPress={async () => {
+                        console.log('selectedPlace:', selectedPlace);
+                        console.log('ratingValue:', ratingValue);
+                        console.log('comment:', comment);
+
+                        if (!selectedPlace?.xid) {
+                          console.warn('xid ausente — verifique o campo correto:', Object.keys(selectedPlace ?? {}));
+                          return;
+                        }
+                        try {
+                          if (myRating) {
+                            const updated = await RatingService.update(myRating.id, {
+                              userId: user?.id ?? 0,
+                              rating: ratingValue,
+                              comment,
+                            });
+                            setMyRating(updated);
+                          } else {
+                            const created = await RatingService.create({
+                              placeId: selectedPlace.xid,
+                              userId: user?.id ?? 0,
+                              userName: `${user?.firstName} ${user?.lastName}`,
+                              rating: ratingValue,
+                              comment,
+                            });
+                            setMyRating(created);
+                          }
+                          setIsRatingOpen(false);
+
+                          const summary = await RatingService.getSummary(selectedPlace.xid);
+                          setRatingData(summary);
+                          const ratings = await RatingService.getByPlace(selectedPlace.xid);  // ← adicionar
+                          setAllRatings(ratings);
+                        } catch (e) {
+                          console.error('Erro ao salvar avaliação:', e);
+                        }
+                      }}
+                    >
+                      <Text style={styles.ratingButtonText}>Salvar avaliação</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {allRatings.map((r) => {
+                    const isMe = r.userId === user?.id;
+                    const name = isMe
+                      ? `${user?.firstName} ${user?.lastName}`
+                      : r.userName ?? `Usuário ${r.userId}`;
+                    const initial = name.charAt(0).toUpperCase();
+
+                    return (
+                      <View key={r.id} style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewAvatar}>
+                            <Text style={styles.reviewAvatarText}>{initial}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.reviewName}>{name}</Text>
+                            <StarRating value={r.rating} size={14} readonly onChange={() => { }} />
+                          </View>
+
+                          {isMe && (
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setMyRating(r);
+                                  setRatingValue(r.rating);
+                                  setComment(r.comment ?? '');
+                                  setIsRatingOpen(true);
+                                  setTimeout(() => commentInputRef.current?.focus(), 100);
+                                }}
+                              >
+                                <IconSymbol name="pencil" size={18} color={PRIMARY} />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  Alert.alert(
+                                    'Excluir avaliação',
+                                    'Tem certeza que deseja excluir sua avaliação?',
+                                    [
+                                      { text: 'Cancelar', style: 'cancel' },
+                                      {
+                                        text: 'Excluir',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                          try {
+                                            await RatingService.delete(r.id, user?.id ?? 0);
+                                            setMyRating(null);
+                                            const summary = await RatingService.getSummary(selectedPlace.xid);
+                                            setRatingData(summary);
+                                            const ratings = await RatingService.getByPlace(selectedPlace.xid);
+                                            setAllRatings(ratings);
+                                          } catch (e) {
+                                            console.error('Erro ao deletar avaliação:', e);
+                                          }
+                                        },
+                                      },
+                                    ]
+                                  );
+                                }}
+                              >
+                                <IconSymbol name="trash" size={18} color="#ef4444" />
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+
+                        {r.comment ? (
+                          <Text style={styles.reviewComment}>{r.comment}</Text>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+
+                </>
+              )}
+            </>
+          )}
+        </Pressable>
+      </BottomSheetView>
+    </BottomSheet>
+
   </SafeAreaView>
   );
 }
@@ -228,7 +531,7 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   loadingText: { marginTop: 16, fontSize: 15, color: '#888' },
-        emptyState: {
+  emptyState: {
     alignItems: 'center',
     paddingVertical: 48,
     paddingHorizontal: 32,
@@ -311,4 +614,115 @@ const styles = StyleSheet.create({
   hoursIcon: { fontSize: 12, marginTop: 1 },
   hoursText: { fontSize: 12, color: '#6b7280', flex: 1, lineHeight: 17 },
   mapHint: { fontSize: 11, fontWeight: '600', opacity: 0.75 },
+  infoSection: {
+    marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  bottomSheetContent: {
+    flex: 1,
+    margin: 16,
+    gap: 5,
+    paddingBottom: 30
+  },
+
+  bottomSheetTextPrimary: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: PRIMARY,
+  },
+
+  bottomSheetTextSecondary: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  bottomSheetTextTertiary: {
+    fontSize: 16,
+    color: '#4a5568',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    marginVertical: 8,
+  },
+  ratingDropdown: {
+    marginTop: 10,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 10,
+  },
+
+  ratingTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+
+  ratingInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    minHeight: 60,
+    textAlignVertical: 'top',
+    backgroundColor: '#fff',
+  },
+
+  ratingButton: {
+    backgroundColor: PRIMARY,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+
+  ratingButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+
+  reviewCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 8,
+    marginTop: 16,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reviewAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: PRIMARY,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewAvatarText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  reviewName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  reviewComment: {
+    fontSize: 13,
+    color: '#4a5568',
+    lineHeight: 18,
+  },
 });

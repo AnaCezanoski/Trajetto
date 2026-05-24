@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../services/api';
 
@@ -19,6 +19,7 @@ export default function VerifyEmailScreen() {
   };
 
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <View style={styles.container}>
       <Text style={styles.title}>Verifique seu Email</Text>
       <Text style={styles.subtitle}>Enviamos um código de 6 dígitos para {email}</Text>
@@ -36,6 +37,7 @@ export default function VerifyEmailScreen() {
         <Text style={styles.buttonText}>Confirmar</Text>
       </TouchableOpacity>
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 

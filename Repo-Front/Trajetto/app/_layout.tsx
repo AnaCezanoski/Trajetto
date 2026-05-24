@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export const unstable_settings = { anchor: '(tabs)' };
 
@@ -67,8 +68,10 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <AuthProvider>
       <RootLayoutNav />
     </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
