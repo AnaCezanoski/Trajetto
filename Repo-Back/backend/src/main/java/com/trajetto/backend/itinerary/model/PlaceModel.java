@@ -21,6 +21,9 @@ public class PlaceModel {
     @Column(name = "id", nullable = false)
     private Long id;
 
+    @Column(name = "xid")
+    private String xid;
+
     @Column(name = "name", nullable = false)
     private String name;
 

@@ -179,6 +179,7 @@ public class ItineraryService {
         for (int i = 0; i < ordered.size(); i++) {
             RomePlace rp = ordered.get(i);
             PlaceModel p = new PlaceModel();
+            p.setXid("osm_" + rp.name().toLowerCase().replaceAll("[^a-z0-9]", "_"));
             p.setName(rp.name());
             p.setAddress(rp.address());
             p.setLatitude(rp.latitude());
@@ -268,6 +269,7 @@ public class ItineraryService {
 
     private PlaceResponseDTO toPlaceDTO(PlaceModel model) {
         PlaceResponseDTO dto = new PlaceResponseDTO();
+        dto.setXid(model.getXid());
         dto.setName(model.getName());
         dto.setAddress(model.getAddress());
         dto.setLatitude(model.getLatitude());

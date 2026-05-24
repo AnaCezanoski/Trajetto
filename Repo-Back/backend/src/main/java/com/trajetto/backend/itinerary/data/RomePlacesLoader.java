@@ -16,6 +16,7 @@ import java.util.List;
 public class RomePlacesLoader {
 
     public record RomePlace(
+            String xid,
             String name,
             String address,
             double latitude,
@@ -52,8 +53,9 @@ public class RomePlacesLoader {
                 String openingHours = props.path("opening_hours").asText("");
                 String category = props.path("category").asText("");
                 String fee = props.path("fee").asText("");
+                String xid = "osm_" + name.toLowerCase().replaceAll("[^a-z0-9]", "_");
                 if (!name.isBlank() && lat != 0.0 && lon != 0.0) {
-                    loaded.add(new RomePlace(name, address, lat, lon, profiles, openingHours, category, fee));
+                    loaded.add(new RomePlace(xid, name, address, lat, lon, profiles, openingHours, category, fee));
                 }
             }
         } catch (Exception e) {
