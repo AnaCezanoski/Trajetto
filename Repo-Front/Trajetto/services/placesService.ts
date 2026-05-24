@@ -9,6 +9,11 @@ export interface Place {
   openingHours: string;
   category: string;
   fee: string;
+  phone?: string;
+  website?: string;
+  wikidata?: string;
+  wikipedia?: string;
+  wheelchair?: string;
 }
 
 export interface PlacesFilter {

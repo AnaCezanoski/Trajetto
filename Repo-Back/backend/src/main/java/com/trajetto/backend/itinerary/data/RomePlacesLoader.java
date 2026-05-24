@@ -23,7 +23,12 @@ public class RomePlacesLoader {
             List<String> profiles,
             String openingHours,
             String category,
-            String fee
+            String fee,
+            String phone,      // ← novo
+            String website,    // ← novo
+            String wikidata,   // ← novo
+            String wikipedia,  // ← novo
+            String wheelchair  // ← novo
     ) {}
 
     @Autowired
@@ -52,8 +57,18 @@ public class RomePlacesLoader {
                 String openingHours = props.path("opening_hours").asText("");
                 String category = props.path("category").asText("");
                 String fee = props.path("fee").asText("");
+                String phone      = props.path("phone").asText("");
+                String website    = props.path("website").asText("");
+                String wikidata   = props.path("wikidata").asText("");
+                String wikipedia  = props.path("wikipedia").asText("");
+                String wheelchair = props.path("wheelchair").asText("");
+
                 if (!name.isBlank() && lat != 0.0 && lon != 0.0) {
-                    loaded.add(new RomePlace(name, address, lat, lon, profiles, openingHours, category, fee));
+                    loaded.add(new RomePlace(
+                            name, address, lat, lon, profiles,
+                            openingHours, category, fee,
+                            phone, website, wikidata, wikipedia, wheelchair
+                    ));
                 }
             }
         } catch (Exception e) {
