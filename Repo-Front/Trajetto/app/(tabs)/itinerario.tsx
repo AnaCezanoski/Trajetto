@@ -10,8 +10,13 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { isPlacePast } from '../utils/isPlacePast';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const PRIMARY = '#023665';
 
@@ -28,10 +33,8 @@ export default function ItinerarioTab() {
   const [layoutReady, setLayoutReady] = React.useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
-  // Track each card's y offset
   const cardOffsets = useRef<number[]>([]);
 
-  // Scroll to highlighted card when coming from map
   useEffect(() => {
     if (highlightedPlaceIndex === null) return;
     const offset = cardOffsets.current[highlightedPlaceIndex];
@@ -40,41 +43,90 @@ export default function ItinerarioTab() {
         scrollRef.current?.scrollTo({ y: Math.max(0, offset - 20), animated: true });
       }, 100);
     }
-    // Clear after scrolling so it doesn't re-trigger
     const timer = setTimeout(() => setHighlightedPlace(null), 800);
     return () => clearTimeout(timer);
   }, [highlightedPlaceIndex]);
 
-  
+  useFocusEffect(
+    useCallback(() => {
+      if (!layoutReady) return;
+      if (!itinerary?.places?.length) return;
 
-useFocusEffect(
-  useCallback(() => {
-    if (!layoutReady) return;
-    if (!itinerary?.places?.length) return;
+      const sorted = [...itinerary.places].sort(
+        (a, b) => a.orderIndex - b.orderIndex
+      );
 
-    const sorted = [...itinerary.places].sort(
-      (a, b) => a.orderIndex - b.orderIndex
-    );
-
-    const firstUpcomingIndex = sorted.findIndex(place => {
-      return !isPlacePast(itinerary.startDate, place.estimatedVisitTime);
-    });
-
-    if (firstUpcomingIndex === -1) return;
-
-    requestAnimationFrame(() => {
-      const offset = cardOffsets.current[firstUpcomingIndex];
-      if (offset == null) return;
-
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, offset - 100),
-        animated: true,
+      const firstUpcomingIndex = sorted.findIndex(place => {
+        return !isPlacePast(itinerary.startDate, place.estimatedVisitTime);
       });
+
+      if (firstUpcomingIndex === -1) return;
+
+      requestAnimationFrame(() => {
+        const offset = cardOffsets.current[firstUpcomingIndex];
+        if (offset == null) return;
+
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, offset - 100),
+          animated: true,
+        });
+      });
+    }, [layoutReady, itinerary])
+  );
+
+  const handleExportPDF = async () => {
+    if (!itinerary) return;
+
+    const sortedPlaces = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
+    
+    let placesHtml = '';
+    sortedPlaces.forEach((place, index) => {
+      placesHtml += `
+        <div style="margin-bottom: 20px; padding: 15px; border-left: 5px solid ${PRIMARY}; background-color: #f8fafc; border-radius: 4px;">
+          <h3 style="margin: 0 0 8px 0; color: #1a1a1a; font-size: 18px;">${index + 1}. ${place.name}</h3>
+          <p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>🕒 Horário Estimado:</strong> ${formatTime(place.estimatedVisitTime)}</p>
+          <p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>📍 Endereço:</strong> ${place.address}</p>
+          ${place.category ? `<p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>🏷️ Categoria:</strong> ${place.category}</p>` : ''}
+          ${place.openingHours ? `<p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>🕐 Horário de Func.:</strong> ${place.openingHours}</p>` : ''}
+        </div>
+      `;
     });
-  }, [layoutReady, itinerary])
-);
 
+    const html = `
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid ${PRIMARY}; padding-bottom: 20px; }
+            .header h1 { color: ${PRIMARY}; margin: 0 0 10px 0; font-size: 28px; }
+            .header p { margin: 5px 0; font-size: 16px; color: #64748b; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Trajetto - Roteiro de Viagem</h1>
+            <p><strong>Período:</strong> ${formatDate(itinerary.startDate)} a ${formatDate(itinerary.endDate)}</p>
+            <p><strong>Total de paradas:</strong> ${sortedPlaces.length}</p>
+          </div>
+          <h2 style="color: ${PRIMARY}; margin-bottom: 20px;">Suas Paradas</h2>
+          ${placesHtml}
+          <div class="footer">
+            <p>Documento gerado pelo aplicativo Trajetto.</p>
+          </div>
+        </body>
+      </html>
+    `;
 
+    try {
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Exportar Roteiro' });
+    } catch (error) {
+      console.log('Erro ao gerar PDF:', error);
+      Alert.alert("Erro", "Não foi possível exportar o roteiro.");
+    }
+  };
 
   if (loading) {
     return (
@@ -97,127 +149,132 @@ useFocusEffect(
 
   const sorted = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
 
-  return (<SafeAreaView style={styles.safe}>
-    <ScrollView
-      ref={scrollRef}
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Cabeçalho */}
-      <View style={styles.headerCard}>
-        <Text style={styles.headerLabel}>Período</Text>
-        <Text style={styles.headerDates}>
-          {formatDate(itinerary.startDate)} → {formatDate(itinerary.endDate)}
-        </Text>
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{sorted.length}</Text>
-            <Text style={styles.statLabel}>Paradas</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {Math.ceil(
-                (new Date(itinerary.endDate).getTime() - new Date(itinerary.startDate).getTime())
-                / (1000 * 60 * 60 * 24)
-              ) + 1}
-            </Text>
-            <Text style={styles.statLabel}>Dias</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <View style={styles.activeDot} />
-            <Text style={styles.statLabel}>Ativo</Text>
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Cabeçalho */}
+        <View style={styles.headerCard}>
+          <Text style={styles.headerLabel}>Período</Text>
+          <Text style={styles.headerDates}>
+            {formatDate(itinerary.startDate)} → {formatDate(itinerary.endDate)}
+          </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{sorted.length}</Text>
+              <Text style={styles.statLabel}>Paradas</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>
+                {Math.ceil(
+                  (new Date(itinerary.endDate).getTime() - new Date(itinerary.startDate).getTime())
+                  / (1000 * 60 * 60 * 24)
+                ) + 1}
+              </Text>
+              <Text style={styles.statLabel}>Dias</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.stat}>
+              <View style={styles.activeDot} />
+              <Text style={styles.statLabel}>Ativo</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Timeline */}
-      <Text style={styles.sectionLabel}>PARADAS DO ROTEIRO</Text>
-      <View style={styles.timeline}>
-        {sorted.map((place, idx) => {
-          const isPast = isPlacePast(itinerary.startDate, place.estimatedVisitTime);
-          const color = PLACE_COLORS[idx % PLACE_COLORS.length];
-          const isLast = idx === sorted.length - 1;
-          const isHighlighted = highlightedPlaceIndex === idx;
+        {/* Timeline */}
+        <Text style={styles.sectionLabel}>PARADAS DO ROTEIRO</Text>
+        <View style={styles.timeline}>
+          {sorted.map((place, idx) => {
+            const isPast = isPlacePast(itinerary.startDate, place.estimatedVisitTime);
+            const color = PLACE_COLORS[idx % PLACE_COLORS.length];
+            const isLast = idx === sorted.length - 1;
+            const isHighlighted = highlightedPlaceIndex === idx;
 
-          return (
-            <View
-              key={idx}
-              style={styles.timelineRow}
-              onLayout={e => {
-  cardOffsets.current[idx] = e.nativeEvent.layout.y;
-
-  // verifica se todos os cards já foram medidos
-  if (cardOffsets.current.length === sorted.length) {
-    setLayoutReady(true);
-  }
-}}
-            >
-              {/* Rail */}
-              <View style={styles.rail}>
-                <View style={[styles.dot, isPast ? { backgroundColor: '#9aa4b2', opacity: 0.6 } : { backgroundColor: color }]} />
-                {!isLast && <View style={styles.line} />}
-              </View>
-
-              {/* Card */}
-              <TouchableOpacity
-                style={[
-                  styles.card,
-                  isLast && { marginBottom: 0 },
-                  isHighlighted && { borderWidth: 2, borderColor: color, shadowOpacity: 0.18 },
-                  isPast && { backgroundColor: '#d9d9d9', opacity: 0.3 },
-                ]}
-                activeOpacity={0.75}
-                onPress={() => {
-                  setFocusedMapPlace(idx);
-                  router.push({
-                    pathname: '/mapa',
-                    params: { from: 'itinerario' }
-                  });
+            return (
+              <View
+                key={idx}
+                style={styles.timelineRow}
+                onLayout={e => {
+                  cardOffsets.current[idx] = e.nativeEvent.layout.y;
+                  if (cardOffsets.current.length === sorted.length) {
+                    setLayoutReady(true);
+                  }
                 }}
               >
-                <View style={styles.cardTop}>
-                  <View style={[styles.orderBadge, { backgroundColor: color }]}>
-                    <Text style={styles.orderText}>{idx + 1}</Text>
-                  </View>
-                  <Text style={[styles.timeText, { color }]}>{formatTime(place.estimatedVisitTime)}</Text>
+                {/* Rail */}
+                <View style={styles.rail}>
+                  <View style={[styles.dot, isPast ? { backgroundColor: '#9aa4b2', opacity: 0.6 } : { backgroundColor: color }]} />
+                  {!isLast && <View style={styles.line} />}
                 </View>
-                <Text style={styles.placeName}>{place.name}</Text>
-                <View style={styles.tagsRow}>
-                  {place.category ? (
-                    <View style={styles.categoryBadge}>
-                      <Text style={styles.categoryText}>
-                        {place.category === 'museum' ? '🏛️ Museum'
-                          : place.category === 'attraction' ? '🎯 Attraction'
-                          : place.category === 'park' ? '🌳 Park'
-                          : place.category === 'church' ? '⛪ Church'
-                          : `📍 ${place.category.charAt(0).toUpperCase() + place.category.slice(1)}`}
-                      </Text>
+
+                {/* Card */}
+                <TouchableOpacity
+                  style={[
+                    styles.card,
+                    isLast && { marginBottom: 0 },
+                    isHighlighted && { borderWidth: 2, borderColor: color, shadowOpacity: 0.18 },
+                    isPast && { backgroundColor: '#d9d9d9', opacity: 0.3 },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setFocusedMapPlace(idx);
+                    router.push({
+                      pathname: '/mapa',
+                      params: { from: 'itinerario' }
+                    });
+                  }}
+                >
+                  <View style={styles.cardTop}>
+                    <View style={[styles.orderBadge, { backgroundColor: color }]}>
+                      <Text style={styles.orderText}>{idx + 1}</Text>
+                    </View>
+                    <Text style={[styles.timeText, { color }]}>{formatTime(place.estimatedVisitTime)}</Text>
+                  </View>
+                  <Text style={styles.placeName}>{place.name}</Text>
+                  <View style={styles.tagsRow}>
+                    {place.category ? (
+                      <View style={styles.categoryBadge}>
+                        <Text style={styles.categoryText}>
+                          {place.category === 'museum' ? '🏛️ Museum'
+                            : place.category === 'attraction' ? '🎯 Attraction'
+                            : place.category === 'park' ? '🌳 Park'
+                            : place.category === 'church' ? '⛪ Church'
+                            : `📍 ${place.category.charAt(0).toUpperCase() + place.category.slice(1)}`}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {place.fee === 'yes' ? (
+                      <View style={styles.feeBadge}>
+                        <Text style={styles.feeText}>🎟️ Paid entry</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.placeAddress} numberOfLines={2}>{place.address}</Text>
+                  {place.openingHours ? (
+                    <View style={styles.hoursRow}>
+                      <Text style={styles.hoursIcon}>🕐</Text>
+                      <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
                     </View>
                   ) : null}
-                  {place.fee === 'yes' ? (
-                    <View style={styles.feeBadge}>
-                      <Text style={styles.feeText}>🎟️ Paid entry</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text style={styles.placeAddress} numberOfLines={2}>{place.address}</Text>
-                {place.openingHours ? (
-                  <View style={styles.hoursRow}>
-                    <Text style={styles.hoursIcon}>🕐</Text>
-                    <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
-                  </View>
-                ) : null}
-                <Text style={[styles.mapHint, { color }]}>View on map ↗</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })}
-      </View>
-    </ScrollView>
-  </SafeAreaView>
+                  <Text style={[styles.mapHint, { color }]}>Ver no mapa ↗</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Botão de Exportar PDF */}
+          <TouchableOpacity style={styles.btnExport} onPress={handleExportPDF}>
+            <Text style={styles.btnExportText}>📄 Exportar em PDF</Text>
+          </TouchableOpacity>
+          
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -228,7 +285,7 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   loadingText: { marginTop: 16, fontSize: 15, color: '#888' },
-        emptyState: {
+  emptyState: {
     alignItems: 'center',
     paddingVertical: 48,
     paddingHorizontal: 32,
@@ -311,4 +368,22 @@ const styles = StyleSheet.create({
   hoursIcon: { fontSize: 12, marginTop: 1 },
   hoursText: { fontSize: 12, color: '#6b7280', flex: 1, lineHeight: 17 },
   mapHint: { fontSize: 11, fontWeight: '600', opacity: 0.75 },
+
+  btnExport: {
+    marginTop: 24,
+    backgroundColor: PRIMARY,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: PRIMARY,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4
+  },
+  btnExportText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16
+  }
 });

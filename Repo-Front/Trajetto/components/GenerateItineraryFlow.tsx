@@ -13,6 +13,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  SafeAreaView,
   View,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -37,9 +38,17 @@ type Suggestion = { lat: number; lng: number; displayName: string; shortName: st
 async function fetchSuggestions(query: string): Promise<Suggestion[]> {
   const encoded = encodeURIComponent(query);
   const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&countrycodes=it&limit=5&format=json&addressdetails=1`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' } });
+  
+  const res = await fetch(url, { 
+    headers: { 
+      'Accept-Language': 'pt-BR,pt;q=0.9',
+      'User-Agent': 'TrajettoApp/1.0 (admin@authserver.com.br)' 
+    } 
+  });
+  
   const data = await res.json();
   if (!Array.isArray(data)) return [];
+  
   return data.map((item: any) => {
     const addr = item.address ?? {};
     const short =
@@ -244,8 +253,8 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <SafeAreaView style={styles.container}>
 
           {/* ── Header ── */}
           {step !== 'loading' && (
@@ -315,29 +324,28 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
                       ) : null
                   }
                 </View>
-
-                {/* Dropdown de sugestões */}
-                {suggestions.length > 0 && !selectedPlace && (
-                  <View style={styles.suggestionsBox}>
-                    {suggestions.map((item, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={[styles.suggestionItem, idx < suggestions.length - 1 && styles.suggestionDivider]}
-                        onPress={() => handleSelectSuggestion(item)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.suggestionPin}>📍</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.suggestionPrimary} numberOfLines={1}>{item.shortName}</Text>
-                          <Text style={styles.suggestionSecondary} numberOfLines={1}>
-                            {item.displayName.split(',').slice(1, 3).join(',')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
               </View>
+
+              {/* Dropdown de sugestões */}
+              {suggestions.length > 0 && !selectedPlace && (
+                <View style={styles.suggestionsBox}>
+                  {suggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[styles.suggestionItem, idx < suggestions.length - 1 && styles.suggestionDivider]}
+                      onPress={() => handleSelectSuggestion(item)}
+                    >
+                      <Text style={styles.suggestionPin}>📍</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.suggestionPrimary} numberOfLines={1}>{item.shortName}</Text>
+                        <Text style={styles.suggestionSecondary} numberOfLines={1}>
+                          {item.displayName.split(',').slice(1, 3).join(',')}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
 
               {/* Endereço confirmado */}
               {selectedPlace && (
@@ -428,7 +436,7 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
             </ScrollView>
           )}
 
-        </View>
+        </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -450,7 +458,7 @@ const styles = StyleSheet.create({
   closeBtn: { padding: 4 },
   closeBtnText: { fontSize: 18, color: 'rgba(255,255,255,0.8)' },
 
-  content: { padding: 24, paddingBottom: 40 },
+  content: { padding: 24, paddingBottom: 80 },
 
   sectionLabel: {
     fontSize: 11,
@@ -475,7 +483,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
   chipActiveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  autocompleteWrapper: { marginBottom: 4, zIndex: 10 },
+  autocompleteWrapper: { marginBottom: 4 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,15 +507,10 @@ const styles = StyleSheet.create({
   suggestionsBox: {
     backgroundColor: '#fff',
     borderRadius: 14,
-    marginTop: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-    overflow: 'hidden',
+    marginTop: 8,
+    marginBottom: 8,
   },
   suggestionItem: {
     flexDirection: 'row',
