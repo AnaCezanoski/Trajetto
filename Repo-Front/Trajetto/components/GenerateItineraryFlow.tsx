@@ -13,9 +13,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { Itinerary } from '../hooks/itineraryStore';

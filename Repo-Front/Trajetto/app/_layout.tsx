@@ -18,10 +18,11 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
+    const currentSegment = segments[0] ?? '';
     const publicRoutes = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen', 'VerifyEmailScreen'];
-    const inPublic = publicRoutes.includes(segments[0]);
-    const inQuizFlow  = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(segments[0] as string);
-    const inTabs      = segments[0] === '(tabs)';
+    const inPublic = publicRoutes.includes(currentSegment);
+    const inQuizFlow  = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(currentSegment);
+    const inTabs      = currentSegment === '(tabs)';
 
     const needsQuiz = !user?.isAdmin && (!user?.travelerProfile || user.travelerProfile === 'SKIPPED');
 

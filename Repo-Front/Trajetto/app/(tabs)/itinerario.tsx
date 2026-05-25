@@ -4,7 +4,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,10 +12,13 @@ import {
   Modal,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { isPlacePast } from '../utils/isPlacePast';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 const PRIMARY = '#023665';
 
@@ -121,10 +123,26 @@ export default function ItinerarioTab() {
 
     try {
       const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Exportar Roteiro' });
+
+      if (Platform.OS === 'android') {
+        const StorageAccessFramework = (FileSystem as any).StorageAccessFramework;
+        if (StorageAccessFramework) {
+          const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            const newUri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, 'Trajetto_Roteiro.pdf', 'application/pdf');
+            await FileSystem.writeAsStringAsync(newUri, base64, { encoding: 'base64' });
+            Alert.alert("Sucesso", "Roteiro salvo no seu celular!");
+            return;
+          }
+        }
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Salvar Roteiro' });
+      } else {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Salvar Roteiro' });
+      }
     } catch (error) {
-      console.log('Erro ao gerar PDF:', error);
-      Alert.alert("Erro", "Não foi possível exportar o roteiro.");
+      console.log('Erro ao exportar:', error);
+      Alert.alert("Erro", "Não foi possível gerar ou salvar o PDF.");
     }
   };
 

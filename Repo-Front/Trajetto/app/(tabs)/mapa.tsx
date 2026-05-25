@@ -310,8 +310,8 @@ const Mapa = () => {
           <Polyline key={`seg-${i}`} coordinates={coords} strokeWidth={4} strokeColor={PLACE_COLORS[i % PLACE_COLORS.length]} />
         ))}
 
-        {itinerary?.originLatitude != null && (
-          <Marker coordinate={{ latitude: itinerary.originLatitude, longitude: itinerary.originLongitude }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        {itinerary?.originLatitude != null && itinerary?.originLongitude != null && (
+          <Marker coordinate={{ latitude: itinerary.originLatitude as number, longitude: itinerary.originLongitude as number }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
             <View style={styles.originWrapper}>
               <View style={styles.originDot} />
               <View style={styles.originLabel}><Text style={styles.originLabelText}>Início</Text></View>
