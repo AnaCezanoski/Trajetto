@@ -17,4 +17,5 @@ public class ItineraryResponseDTO {
     private Double originLongitude;
     private Integer rating;
     private String ratingDescription;
+    private String date;
 }

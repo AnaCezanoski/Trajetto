@@ -29,4 +29,18 @@ export class ItineraryService {
         const response = await api.patch(`/itinerary/${itineraryId}/rating`, { rating, ratingDescription });
         return response.data;
     }
+
+    static async updateDate(itineraryId: number, date: string | null) {
+        const response = await api.patch(`/itinerary/${itineraryId}/date`, { date });
+        return response.data;
+    }
+
+    static async replacePlace(itineraryId: number, orderIndex: number, place: {
+        name: string; address: string; latitude: number; longitude: number;
+        estimatedVisitTime: string; openingHours?: string | null;
+        category?: string | null; fee?: string | null;
+    }) {
+        const response = await api.patch(`/itinerary/${itineraryId}/place/${orderIndex}`, place);
+        return response.data;
+    }
 }

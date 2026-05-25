@@ -16,6 +16,82 @@ import { useAuth } from '../../context/AuthContext';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
 
+function DateSection({ itinerary }: { itinerary: Itinerary }) {
+  const updateDate = useItineraryStore(s => s.updateDate);
+  const [dateText, setDateText] = useState(itinerary.date ?? '');
+  const [saving, setSaving] = useState(false);
+  const changed = dateText !== (itinerary.date ?? '');
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateDate(itinerary.id, dateText.trim() || null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={dateStyles.container}>
+      <Text style={dateStyles.label}>Data</Text>
+      <TextInput
+        style={dateStyles.input}
+        value={dateText}
+        onChangeText={setDateText}
+      />
+      {changed && (
+        <TouchableOpacity
+          style={dateStyles.saveBtn}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          {saving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={dateStyles.saveBtnText}>Salvar</Text>
+          }
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const dateStyles = StyleSheet.create({
+  container: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f4f8',
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a9ab0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e8edf3',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    color: '#1a1a1a',
+    backgroundColor: '#f8fafc',
+  },
+  saveBtn: {
+    marginTop: 8,
+    backgroundColor: '#023665',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+});
+
 function RatingSection({ itinerary }: { itinerary: Itinerary }) {
   const rateItinerary = useItineraryStore(s => s.rateItinerary);
   const [desc, setDesc] = useState(itinerary.ratingDescription ?? '');
@@ -375,6 +451,7 @@ export default function RoteirosTab() {
                     })}
                 </View>
               )}
+              {!selectMode && <DateSection itinerary={itinerary} />}
               {!selectMode && <RatingSection itinerary={itinerary} />}
             </TouchableOpacity>
 
@@ -447,6 +524,7 @@ export default function RoteirosTab() {
                         </>
                       )}
                     </TouchableOpacity>
+                    {!selectMode && <DateSection itinerary={item} />}
                     {!selectMode && <RatingSection itinerary={item} />}
                   </View>
                 ))}

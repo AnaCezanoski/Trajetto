@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useItineraryStore } from '@/hooks/itineraryStore';
 import { RouteService } from '@/services/routeService';
 import { placesService, Place, PlacesFilter } from '@/services/placesService';
+import { isPlacePast } from '@/app/utils/isPlacePast';
 import { MaterialIcons } from '@expo/vector-icons';
 import polyline from '@mapbox/polyline';
 import * as Location from 'expo-location';
@@ -11,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, Text, TextInput, TouchableOpacity,
   View, FlatList, Keyboard, Modal, ScrollView,
-  ActivityIndicator, Switch,
+  ActivityIndicator, Switch, Animated,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 
@@ -77,6 +78,50 @@ function countActiveFilters(f: PlacesFilter): number {
   return n;
 }
 
+// Interpola uma coordenada ao longo de um caminho (t = 0..1)
+function interpolateAlongPath(coords: LatLng[], t: number): LatLng {
+  if (coords.length === 0) return { latitude: 0, longitude: 0 };
+  if (coords.length === 1) return coords[0];
+  const total = coords.length - 1;
+  const pos = t * total;
+  const i = Math.min(Math.floor(pos), total - 1);
+  const f = pos - i;
+  return {
+    latitude: coords[i].latitude + (coords[i + 1].latitude - coords[i].latitude) * f,
+    longitude: coords[i].longitude + (coords[i + 1].longitude - coords[i].longitude) * f,
+  };
+}
+
+// Polyline pontilhada animada — setInterval contínuo (sem reset de loop = sem salto visual)
+function AnimatedDashedPolyline({ coordinates, color, zIndex }: { coordinates: LatLng[]; color: string; zIndex: number }) {
+  const [dashPhase, setDashPhase] = useState(0);
+  useEffect(() => {
+    // Decrementa indefinidamente — lineDashPhase é periódico, não precisa resetar
+    const id = setInterval(() => setDashPhase(p => p - 0.5), 20);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <Polyline
+      coordinates={coordinates}
+      strokeWidth={3}
+      strokeColor={color}
+      lineDashPattern={[5, 16]}
+      lineDashPhase={dashPhase}
+      zIndex={zIndex}
+    />
+  );
+}
+
+// Rumo em graus entre dois pontos (para rotacionar a seta)
+function bearing(from: LatLng, to: LatLng): number {
+  const dLon = (to.longitude - from.longitude) * Math.PI / 180;
+  const lat1 = from.latitude * Math.PI / 180;
+  const lat2 = to.latitude * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 const DISTANCE_OPTIONS = [
   { label: 'Qualquer', value: undefined },
   { label: '500 m',   value: 500 },
@@ -101,6 +146,9 @@ const Mapa = () => {
   const mapRef        = useRef<MapView>(null);
   const isFocusingPin = useRef(false);
   const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Animações do mapa
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   // ─── Search ───────────────────────────────────────────
   const [search, setSearch]           = useState('');
@@ -238,33 +286,70 @@ const Mapa = () => {
     if (!itinerary?.places?.length) return;
     const sorted = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
     setPoints(sorted);
-    buildSegments(sorted);
+
+    let cancelled = false;
+
+    (async () => {
+      if (sorted.length > 0) {
+        setRegion(prev => ({
+          ...(prev ?? { latitudeDelta: 0.06, longitudeDelta: 0.06 }),
+          latitude: sorted[0].latitude,
+          longitude: sorted[0].longitude,
+        }));
+      }
+
+      const pairs: Array<[{ lat: number; lng: number }, { lat: number; lng: number }]> = [];
+      if (itinerary.originLatitude != null) {
+        pairs.push([
+          { lat: itinerary.originLatitude, lng: itinerary.originLongitude! },
+          { lat: sorted[0].latitude, lng: sorted[0].longitude },
+        ]);
+      }
+      sorted.slice(0, -1).forEach((place: any, i: number) => {
+        pairs.push([
+          { lat: place.latitude, lng: place.longitude },
+          { lat: sorted[i + 1].latitude, lng: sorted[i + 1].longitude },
+        ]);
+      });
+
+      const result = await Promise.all(
+        pairs.map(([orig, dest]) =>
+          RouteService.getRoute({ origin: orig, destination: dest, waypoints: [] })
+            .then(data => polyline.decode(data.geometry).map(([lat, lng]: number[]) => ({ latitude: lat, longitude: lng })))
+            .catch(() => [{ latitude: orig.lat, longitude: orig.lng }, { latitude: dest.lat, longitude: dest.lng }])
+        )
+      );
+
+      if (!cancelled) setSegments(result);
+    })();
+
+    return () => { cancelled = true; };
   }, [itinerary]);
 
-  const buildSegments = async (sorted: any[]) => {
-    if (!itinerary) return;
-    if (sorted.length > 0) {
-      setRegion(prev => ({
-        ...(prev ?? { latitudeDelta: 0.06, longitudeDelta: 0.06 }),
-        latitude: sorted[0].latitude,
-        longitude: sorted[0].longitude,
-      }));
-    }
-    const segmentPromises = sorted.slice(0, -1).map((place, i) =>
-      RouteService.getRoute({
-        origin: { lat: place.latitude, lng: place.longitude },
-        destination: { lat: sorted[i + 1].latitude, lng: sorted[i + 1].longitude },
-        waypoints: [],
-      }).then(data => {
-        const decoded = polyline.decode(data.geometry);
-        return decoded.map(([lat, lng]: number[]) => ({ latitude: lat, longitude: lng }));
-      }).catch(() => [
-        { latitude: place.latitude, longitude: place.longitude },
-        { latitude: sorted[i + 1].latitude, longitude: sorted[i + 1].longitude },
+  // Calcula índice do próximo lugar a visitar
+  const sorted = itinerary?.places
+    ? [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex)
+    : [];
+  const firstUpcomingIdx = itinerary
+    ? sorted.findIndex(p => !isPlacePast(itinerary.startDate, p.estimatedVisitTime))
+    : 0;
+  const hasOriginSeg = itinerary?.originLatitude != null;
+  const currentSegIdx = hasOriginSeg
+    ? (firstUpcomingIdx >= 0 ? firstUpcomingIdx : -1)
+    : (firstUpcomingIdx > 0 ? firstUpcomingIdx - 1 : -1);
+  const currentSegCoords = currentSegIdx >= 0 ? (segments[currentSegIdx] ?? []) : [];
+
+  // Pulso no próximo destino
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 900, useNativeDriver: true }),
       ])
     );
-    setSegments(await Promise.all(segmentPromises));
-  };
+    anim.start();
+    return () => anim.stop();
+  }, []);
 
   useEffect(() => {
     if (!points.length || focusedMapPlaceIndex === null) return;
@@ -306,9 +391,48 @@ const Mapa = () => {
         showsUserLocation
         onPress={() => { setShowSuggestions(false); Keyboard.dismiss(); }}
       >
-        {segments.map((coords, i) => (
-          <Polyline key={`seg-${i}`} coordinates={coords} strokeWidth={4} strokeColor={PLACE_COLORS[i % PLACE_COLORS.length]} />
-        ))}
+        {/* Um único map — cada segmento renderiza exatamente UM tipo */}
+        {segments.map((coords, i) => {
+          const destColor = PLACE_COLORS[(hasOriginSeg ? i : i + 1) % PLACE_COLORS.length];
+          if (i < currentSegIdx) {
+            // Passado — cinza desbotado
+            return (
+              <Polyline key={`seg-${i}`} coordinates={coords} strokeWidth={1.5} strokeColor="rgba(160,168,180,0.22)" zIndex={1} />
+            );
+          }
+          if (i === currentSegIdx) {
+            // Atual — SOMENTE pontilhado animado, sem sólido
+            return (
+              <AnimatedDashedPolyline
+                key={`seg-${i}`}
+                coordinates={coords}
+                color={PLACE_COLORS[firstUpcomingIdx % PLACE_COLORS.length]}
+                zIndex={100}
+              />
+            );
+          }
+          // Futuro — sólido colorido
+          return (
+            <Polyline key={`seg-${i}`} coordinates={coords} strokeWidth={3} strokeColor={destColor} zIndex={10} />
+          );
+        })}
+
+        {/* Setas de direção nos segmentos futuros */}
+        {segments.map((coords, i) => {
+          if (i <= currentSegIdx || coords.length < 2) return null;
+          const mid      = interpolateAlongPath(coords, 0.5);
+          const endCoord = coords[coords.length - 1];
+          const rot      = bearing(mid, endCoord);
+          const color = PLACE_COLORS[(hasOriginSeg ? i : i + 1) % PLACE_COLORS.length];
+          return (
+            <Marker key={`arrow-${i}`} coordinate={mid} anchor={{ x: 0.5, y: 0.5 }} rotation={rot} tracksViewChanges={false}>
+              <View style={[mapStyles.arrowMarker, { borderColor: color }]}>
+                <Text style={[mapStyles.arrowText, { color }]}>▶</Text>
+              </View>
+            </Marker>
+          );
+        })}
+
 
         {itinerary?.originLatitude != null && (
           <Marker coordinate={{ latitude: itinerary.originLatitude, longitude: itinerary.originLongitude }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
@@ -320,15 +444,28 @@ const Mapa = () => {
         )}
 
         {points.map((point, index) => {
-          const color = PLACE_COLORS[index % PLACE_COLORS.length];
+          const isPast    = isPlacePast(itinerary!.startDate, point.estimatedVisitTime);
+          const isNext    = index === firstUpcomingIdx;
+          const color     = isPast ? '#9aa4b2' : PLACE_COLORS[index % PLACE_COLORS.length];
           return (
-            <Marker key={`pin-${index}`} coordinate={{ latitude: point.latitude, longitude: point.longitude }} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+            <Marker key={`pin-${index}`} coordinate={{ latitude: point.latitude, longitude: point.longitude }} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={isNext}>
               <View style={styles.markerWrapper}>
-                <TouchableOpacity style={[styles.label, { borderColor: color, backgroundColor: '#fff' }]} onPress={() => handlePinPress(index)} activeOpacity={0.75}>
+                {/* Pulso no próximo destino */}
+                {isNext && (
+                  <Animated.View style={[
+                    mapStyles.pulse,
+                    { borderColor: color, opacity: pulseAnim, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }] }
+                  ]} />
+                )}
+                <TouchableOpacity
+                  style={[styles.label, { borderColor: isPast ? '#c8ced8' : color, backgroundColor: isPast ? '#f0f2f5' : '#fff', opacity: isPast ? 0.6 : 1 }]}
+                  onPress={() => handlePinPress(index)}
+                  activeOpacity={0.75}
+                >
                   <Text style={[styles.labelText, { color }]}>{index + 1}. {point.name.length > 14 ? point.name.slice(0, 14) + '…' : point.name}</Text>
-                  <Text style={[styles.labelSub, { color }]}>ver no itinerário ↗</Text>
+                  <Text style={[styles.labelSub, { color }]}>{isPast ? 'visitado ✓' : 'ver no itinerário ↗'}</Text>
                 </TouchableOpacity>
-                <View style={styles.pinContainer}>
+                <View style={[styles.pinContainer, isPast && { opacity: 0.45 }]}>
                   <MaterialIcons name="location-on" size={42} color={color} />
                   <View style={[styles.numberBadge, { backgroundColor: color }]}>
                     <Text style={styles.numberText}>{index + 1}</Text>
@@ -381,6 +518,25 @@ const Mapa = () => {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Barra de trajeto atual */}
+        {currentSegIdx >= 0 && firstUpcomingIdx < points.length && (
+          <View style={mapStyles.routeBar}>
+            <View style={[mapStyles.routeDot, { backgroundColor: PLACE_COLORS[firstUpcomingIdx % PLACE_COLORS.length] }]} />
+            <Text style={mapStyles.routeText} numberOfLines={1}>
+              <Text style={[mapStyles.routeLabel, { color: PLACE_COLORS[firstUpcomingIdx % PLACE_COLORS.length] }]}>Agora · </Text>
+              {hasOriginSeg && firstUpcomingIdx === 0
+                ? <Text style={[mapStyles.routeNum, { color: PRIMARY }]}>Início</Text>
+                : <Text style={[mapStyles.routeNum, { color: PLACE_COLORS[(firstUpcomingIdx - 1 + PLACE_COLORS.length) % PLACE_COLORS.length] }]}>{firstUpcomingIdx}</Text>
+              }
+              <Text style={mapStyles.routeArrow}> → </Text>
+              <Text style={[mapStyles.routeNum, { color: PLACE_COLORS[firstUpcomingIdx % PLACE_COLORS.length] }]}>{firstUpcomingIdx + 1}</Text>
+              {'  '}{points[firstUpcomingIdx]?.name?.length > 16
+                ? points[firstUpcomingIdx].name.slice(0, 16) + '…'
+                : points[firstUpcomingIdx]?.name}
+            </Text>
+          </View>
+        )}
 
         {/* Chips de filtros ativos */}
         {activeCount > 0 && (
@@ -731,4 +887,41 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 20 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10 },
   emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center', lineHeight: 22 },
+});
+
+const mapStyles = StyleSheet.create({
+  routeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    gap: 7,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  routeDot: { width: 8, height: 8, borderRadius: 4 },
+  routeText: { fontSize: 12, color: '#1a1a1a', flexShrink: 1 },
+  routeLabel: { fontSize: 11, color: '#8a9ab0', fontWeight: '500' },
+  routeNum: { fontSize: 12, fontWeight: '700' },
+  routeArrow: { fontSize: 11, color: '#8a9ab0' },
+  arrowMarker: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  arrowText: { fontSize: 9, fontWeight: 'bold' },
+  pulse: {
+    position: 'absolute',
+    width: 48, height: 48, borderRadius: 24,
+    borderWidth: 2.5,
+    bottom: 32, alignSelf: 'center',
+    zIndex: -1,
+  },
 });
