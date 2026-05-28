@@ -52,8 +52,9 @@ export default function QuizScreen() {
 
     if (currentIndex === total - 1) {
       const perfil = calcularPerfil(newScores);
-      const sourceParam = source ? `&source=${source}` : '';
-      router.replace(`/QuizResultScreen?profile=${perfil}${sourceParam}`);
+      const params: { profile: string; source?: string } = { profile: perfil };
+      if (source) params.source = source;
+      router.replace({ pathname: '/QuizResultScreen', params });
     } else {
       setScores(newScores);
       setCurrentIndex(currentIndex + 1);

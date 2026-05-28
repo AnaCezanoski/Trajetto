@@ -64,11 +64,10 @@ export default function TravelerTestScreen() {
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() =>
-            router.push(
-              fromProfile
-                ? '/QuizScreen?source=profile'
-                : '/QuizScreen'
-            )
+            router.replace({
+              pathname: '/QuizScreen',
+              params: fromProfile ? { source: 'profile' } : undefined,
+            })
           }
         >
           <Text style={styles.primaryButtonText}>Fazer o teste</Text>

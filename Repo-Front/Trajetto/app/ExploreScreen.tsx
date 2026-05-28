@@ -63,10 +63,10 @@ export default function ExploreScreen() {
   const fetchSpots = async (searchTerm: string, category: string) => {
     setLoading(true);
     try {
-      const results = await placesService.getAll(
-        searchTerm || undefined,
-        category || undefined,
-      );
+      const results = await placesService.getAll({
+        search: searchTerm || undefined,
+        category: category || undefined,
+      });
       setSpots(results);
       setSearched(true);
     } catch {

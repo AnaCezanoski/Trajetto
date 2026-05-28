@@ -14,16 +14,21 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Modal,
+  TextInput,
+  Alert,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { isPlacePast } from '../utils/isPlacePast';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 const PRIMARY = '#023665';
 
@@ -250,7 +255,6 @@ export default function ItinerarioTab() {
     setLoadingAlts(true);
     setAlternatives([]);
 
-    // ignora SKIPPED ou nulo — sem profile = recomendações padrão
     const tp = user?.travelerProfile;
     const profile = tp && tp !== 'SKIPPED' ? tp : undefined;
 
@@ -261,15 +265,12 @@ export default function ItinerarioTab() {
       [...list].sort(() => Math.random() - 0.5).slice(0, n);
 
     try {
-      // busca todos com o perfil do viajante (sem categoria pra garantir resultados)
       const allByProfile = await placesService.getAll({ profile });
       const available = exclude(allByProfile);
 
-      // 2 da mesma categoria
       const sameCategory = available.filter(p => p.category === place.category);
       const same2 = pick(sameCategory, 2);
 
-      // 1 de categoria diferente
       const same2Names = new Set(same2.map(p => p.name));
       const different = available.filter(
         p => p.category !== place.category && !same2Names.has(p.name)
@@ -278,7 +279,6 @@ export default function ItinerarioTab() {
 
       const result = [...same2, ...diff1];
 
-      // fallback: se ficou vazio, pega qualquer coisa disponível
       if (result.length === 0) {
         setAlternatives(pick(available, 3));
       } else {
@@ -319,6 +319,77 @@ export default function ItinerarioTab() {
     setSwipedPlace(null);
     setAlternatives([]);
   }, []);
+
+  // ─── PDF Export ───────────────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    if (!itinerary) return;
+
+    const sortedPlaces = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
+
+    let placesHtml = '';
+    sortedPlaces.forEach((place, index) => {
+      placesHtml += `
+        <div style="margin-bottom: 20px; padding: 15px; border-left: 5px solid ${PRIMARY}; background-color: #f8fafc; border-radius: 4px;">
+          <h3 style="margin: 0 0 8px 0; color: #1a1a1a; font-size: 18px;">${index + 1}. ${place.name}</h3>
+          <p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>🕒 Horário Estimado:</strong> ${formatTime(place.estimatedVisitTime)}</p>
+          <p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>📍 Endereço:</strong> ${place.address}</p>
+          ${place.category ? `<p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>🏷️ Categoria:</strong> ${place.category}</p>` : ''}
+          ${place.openingHours ? `<p style="margin: 4px 0; font-size: 14px; color: #4a5568;"><strong>🕐 Horário de Func.:</strong> ${place.openingHours}</p>` : ''}
+        </div>
+      `;
+    });
+
+    const html = `
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid ${PRIMARY}; padding-bottom: 20px; }
+            .header h1 { color: ${PRIMARY}; margin: 0 0 10px 0; font-size: 28px; }
+            .header p { margin: 5px 0; font-size: 16px; color: #64748b; }
+            .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Trajetto - Roteiro de Viagem</h1>
+            <p><strong>Período:</strong> ${formatDate(itinerary.startDate)} a ${formatDate(itinerary.endDate)}</p>
+            <p><strong>Total de paradas:</strong> ${sortedPlaces.length}</p>
+          </div>
+          <h2 style="color: ${PRIMARY}; margin-bottom: 20px;">Suas Paradas</h2>
+          ${placesHtml}
+          <div class="footer">
+            <p>Documento gerado pelo aplicativo Trajetto.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    try {
+      const { uri } = await Print.printToFileAsync({ html });
+
+      if (Platform.OS === 'android') {
+        const StorageAccessFramework = (FileSystem as any).StorageAccessFramework;
+        if (StorageAccessFramework) {
+          const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+          if (permissions.granted) {
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            const newUri = await StorageAccessFramework.createFileAsync(permissions.directoryUri, 'Trajetto_Roteiro.pdf', 'application/pdf');
+            await FileSystem.writeAsStringAsync(newUri, base64, { encoding: 'base64' });
+            Alert.alert("Sucesso", "Roteiro salvo no seu celular!");
+            return;
+          }
+        }
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Salvar Roteiro' });
+      } else {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Salvar Roteiro' });
+      }
+    } catch (error) {
+      console.log('Erro ao exportar:', error);
+      Alert.alert("Erro", "Não foi possível gerar ou salvar o PDF.");
+    }
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -462,6 +533,12 @@ export default function ItinerarioTab() {
             );
           })}
         </View>
+
+        {/* Botão de Exportar PDF */}
+        <TouchableOpacity style={styles.btnExport} onPress={handleExportPDF}>
+          <Text style={styles.btnExportText}>📄 Exportar em PDF</Text>
+        </TouchableOpacity>
+
       </ScrollView>
 
       {/* ─── Modal de alternativas ─── */}
@@ -588,4 +665,22 @@ const styles = StyleSheet.create({
   hoursIcon: { fontSize: 12, marginTop: 1 },
   hoursText: { fontSize: 12, color: '#6b7280', flex: 1, lineHeight: 17 },
   mapHint: { fontSize: 11, fontWeight: '600', opacity: 0.75 },
+
+  btnExport: {
+    marginTop: 24,
+    backgroundColor: PRIMARY,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: PRIMARY,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4
+  },
+  btnExportText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16
+  }
 });

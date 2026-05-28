@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
@@ -210,6 +210,7 @@ const ratingStyles = StyleSheet.create({
   },
   saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 });
+
 
 const PRIMARY = '#023665';
 
