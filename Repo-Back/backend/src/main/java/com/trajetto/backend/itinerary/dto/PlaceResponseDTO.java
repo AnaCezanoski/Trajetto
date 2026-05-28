@@ -7,6 +7,7 @@ import java.time.LocalTime;
 @Data
 public class PlaceResponseDTO {
 
+    private String xid;
     private String name;
     private String address;
     private Double latitude;
