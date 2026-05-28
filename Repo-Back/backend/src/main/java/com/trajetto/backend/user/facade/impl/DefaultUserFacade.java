@@ -12,28 +12,19 @@ import com.trajetto.backend.user.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.modelmapper.ModelMapper;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @Component
 public class DefaultUserFacade implements UserFacade {
-
-    private static final Logger logger = LogManager.getLogger(DefaultUserFacade.class);
 
     //private final FirebaseStorageService firebaseStorageService;
     private final UserService userService;
@@ -242,8 +233,4 @@ public class DefaultUserFacade implements UserFacade {
 //    }
 
     //private boolean checkIfUserCpfExists(String cpf) {return userService.existsByCPF(cpf);}
-
-    private boolean checkIfUserEmailExists(String email){
-        return userService.existsByEmail(email);
-    }
 }

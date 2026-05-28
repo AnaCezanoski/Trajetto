@@ -14,8 +14,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
-import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -36,12 +34,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public MvcRequestMatcher.Builder mvc(HandlerMappingIntrospector introspector) {
-        return new MvcRequestMatcher.Builder(introspector);
-    }
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http,MvcRequestMatcher.Builder mvc) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .sessionManagement(sm -> sm.sessionCreationPolicy(STATELESS))
                 .cors(Customizer.withDefaults())
@@ -49,35 +42,35 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .addFilterAfter(jwtTokenFilter, BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(mvc.pattern("/v3/api-docs/**")).permitAll()
-                        .requestMatchers(mvc.pattern("/swagger-ui/**")).permitAll()
-                        .requestMatchers(mvc.pattern("/swagger-ui.html")).permitAll()
-                        .requestMatchers(mvc.pattern("/actuator/**")).permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-ui.html").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(mvc.pattern("/api/address/**")).permitAll()
-                        .requestMatchers(mvc.pattern("/user/validateEmail/{email}")).permitAll()
-                        .requestMatchers(mvc.pattern("/user/validateCpf/{cpf}")).permitAll()
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/places")).authenticated()
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/places/categories")).authenticated()
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/tourist-spots")).permitAll()
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/user")).hasRole("ADMIN")
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/login")).permitAll()
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/logout")).authenticated()
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/password/forgot")).permitAll()
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/password/reset")).permitAll()
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/create")).permitAll()
-                                .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/verify")).permitAll()
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/user/me")).authenticated()
-                        .requestMatchers(mvc.pattern(HttpMethod.PUT, "/user/me")).authenticated()
-                        .requestMatchers(mvc.pattern(HttpMethod.POST, "/user/me/picture")).authenticated()
-                        .requestMatchers(mvc.pattern(HttpMethod.GET, "/user/{id}")).hasRole("ADMIN")
-                        .requestMatchers(mvc.pattern(HttpMethod.DELETE, "/user/{id}")).hasRole("ADMIN")
-                        .requestMatchers(mvc.pattern(HttpMethod.PATCH, "/user/{id}")).hasRole("ADMIN")
-                        .requestMatchers(mvc.pattern(HttpMethod.PUT, "/user/{id}")).hasRole("ADMIN")
-                        .requestMatchers(mvc.pattern(HttpMethod.PUT, "/user/*/role")).hasRole("ADMIN")
-                                .requestMatchers("/route").permitAll()
+                        .requestMatchers("/api/address/**").permitAll()
+                        .requestMatchers("/user/validateEmail/{email}").permitAll()
+                        .requestMatchers("/user/validateCpf/{cpf}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/places").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/places/categories").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/tourist-spots").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/user/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/logout").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/user/password/forgot").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/password/reset").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/create").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/user/verify").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/user/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/user/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/user/me/picture").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/user/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/user/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/user/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/user/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/user/*/role").hasRole("ADMIN")
+                        .requestMatchers("/route").permitAll()
                         .anyRequest().authenticated()
-                        )
+                )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
