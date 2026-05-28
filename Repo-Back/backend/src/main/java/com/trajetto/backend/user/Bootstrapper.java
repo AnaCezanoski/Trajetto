@@ -1,6 +1,5 @@
 package com.trajetto.backend.user;
 
-import com.trajetto.backend.user.AdminConfig;
 import com.trajetto.backend.user.model.UserModel;
 import com.trajetto.backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;

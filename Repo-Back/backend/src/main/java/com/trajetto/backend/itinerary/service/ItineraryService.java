@@ -2,8 +2,10 @@ package com.trajetto.backend.itinerary.service;
 
 import com.trajetto.backend.itinerary.data.RomePlacesLoader;
 import com.trajetto.backend.itinerary.data.RomePlacesLoader.RomePlace;
+import com.trajetto.backend.itinerary.dto.DateRequestDTO;
 import com.trajetto.backend.itinerary.dto.GenerateItineraryRequestDTO;
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
+import com.trajetto.backend.itinerary.dto.PlaceRequestDTO;
 import com.trajetto.backend.itinerary.dto.PlaceResponseDTO;
 import com.trajetto.backend.itinerary.dto.RatingRequestDTO;
 import com.trajetto.backend.itinerary.model.ItineraryModel;
@@ -131,9 +133,9 @@ public class ItineraryService {
         }).sorted(Comparator.comparingDouble(ScoredPlace::score).reversed())
                 .collect(Collectors.toList());
 
-        // Pick top 6
+        // Pick top 7
         List<RomePlace> selected = scored.stream()
-                .limit(6)
+                .limit(7)
                 .map(ScoredPlace::place)
                 .collect(Collectors.toList());
 
@@ -164,7 +166,8 @@ public class ItineraryService {
         // Build and save new itinerary
         LocalTime[] times = {
                 LocalTime.of(9, 0), LocalTime.of(10, 30), LocalTime.of(12, 0),
-                LocalTime.of(14, 0), LocalTime.of(15, 30), LocalTime.of(17, 0)
+                LocalTime.of(14, 0), LocalTime.of(15, 30), LocalTime.of(17, 0),
+                LocalTime.of(21, 0)
         };
 
         ItineraryModel itinerary = new ItineraryModel();
@@ -240,6 +243,36 @@ public class ItineraryService {
         return toDTO(itineraryRepository.save(itinerary));
     }
 
+    public ItineraryResponseDTO updateDate(Long itineraryId, DateRequestDTO req) {
+        ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+        itinerary.setDate(req.getDate());
+        return toDTO(itineraryRepository.save(itinerary));
+    }
+
+    public ItineraryResponseDTO replacePlace(Long itineraryId, Integer orderIndex, PlaceRequestDTO req) {
+        ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
+                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+
+        PlaceModel place = itinerary.getPlaces().stream()
+                .filter(p -> p.getOrderIndex().equals(orderIndex))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Place not found"));
+
+        place.setName(req.getName());
+        place.setAddress(req.getAddress());
+        place.setLatitude(req.getLatitude());
+        place.setLongitude(req.getLongitude());
+        place.setOpeningHours(req.getOpeningHours());
+        place.setCategory(req.getCategory());
+        place.setFee(req.getFee());
+        if (req.getEstimatedVisitTime() != null) {
+            place.setEstimatedVisitTime(java.time.LocalTime.parse(req.getEstimatedVisitTime()));
+        }
+
+        return toDTO(itineraryRepository.save(itinerary));
+    }
+
     public void deleteItinerary(Long itineraryId, Long userId) {
         ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
                 .orElseThrow(() -> new RuntimeException("Itinerary not found"));
@@ -259,6 +292,7 @@ public class ItineraryService {
         dto.setOriginLongitude(model.getOriginLongitude());
         dto.setRating(model.getRating());
         dto.setRatingDescription(model.getRatingDescription());
+        dto.setDate(model.getDate());
         dto.setPlaces(
                 model.getPlaces().stream()
                         .map(this::toPlaceDTO)

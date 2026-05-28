@@ -4,8 +4,6 @@ import com.trajetto.backend.user.dto.UserDTO;
 import com.trajetto.backend.user.dto.UserResponseDTO;
 import com.trajetto.backend.user.dto.UserUpdateDTO;
 import com.trajetto.backend.user.model.UserModel;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 
 public interface UserFacade {

@@ -48,4 +48,7 @@ public class ItineraryModel {
     @Column(name = "rating_description", columnDefinition = "TEXT")
     private String ratingDescription;
 
+    @Column(name = "date")
+    private String date;
+
 }

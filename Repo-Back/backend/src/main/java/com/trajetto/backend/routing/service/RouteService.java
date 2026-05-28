@@ -3,6 +3,7 @@ package com.trajetto.backend.routing.service;
 import com.trajetto.backend.routing.dto.CoordinateDTO;
 import com.trajetto.backend.routing.dto.RouteRequestDTO;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -47,15 +48,17 @@ public class RouteService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                 url,
                 HttpMethod.POST,
                 entity,
-                Map.class
+                new ParameterizedTypeReference<Map<String, Object>>() {}
         );
 
-        Map route = (Map) ((List) response.getBody().get("routes")).get(0);
-        Map summary = (Map) route.get("summary");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> route = (Map<String, Object>) ((List<Object>) response.getBody().get("routes")).get(0);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> summary = (Map<String, Object>) route.get("summary");
 
         Map<String, Object> result = new HashMap<>();
         result.put("geometry", route.get("geometry"));

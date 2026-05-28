@@ -3,10 +3,10 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export const unstable_settings = { anchor: '(tabs)' };
 
@@ -19,10 +19,11 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
 
+    const currentSegment = segments[0] ?? '';
     const publicRoutes = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen', 'VerifyEmailScreen'];
-    const inPublic = publicRoutes.includes(segments[0]);
-    const inQuizFlow  = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(segments[0] as string);
-    const inTabs      = segments[0] === '(tabs)';
+    const inPublic = publicRoutes.includes(currentSegment);
+    const inQuizFlow  = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(currentSegment);
+    const inTabs      = currentSegment === '(tabs)';
 
     const needsQuiz = !user?.isAdmin && (!user?.travelerProfile || user.travelerProfile === 'SKIPPED');
 
@@ -69,9 +70,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

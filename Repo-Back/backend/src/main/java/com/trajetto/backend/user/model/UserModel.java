@@ -53,7 +53,7 @@ public class UserModel {
     @Column(name = "password")
     private String password;
 
-    @Column(name = "is_verified")
+    @Column(name = "is_verified", nullable = false)
     private boolean isVerified = false;
 
     @Column(name = "verification_code")
