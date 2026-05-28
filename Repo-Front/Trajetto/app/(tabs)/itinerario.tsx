@@ -1,7 +1,17 @@
 import { PLACE_COLORS } from '@/constants/placeColors';
-import { useItineraryStore } from '@/hooks/itineraryStore';
+import { useAuth } from '@/context/AuthContext';
+import { Places, useItineraryStore } from '@/hooks/itineraryStore';
+import { Place, placesService } from '@/services/placesService';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -22,6 +32,23 @@ import * as FileSystem from 'expo-file-system';
 
 const PRIMARY = '#023665';
 
+function categoryIcon(category: string): string {
+  const c = (category || '').toLowerCase();
+  if (c.includes('museum'))   return '🏛️';
+  if (c.includes('monument')) return '🗿';
+  if (c.includes('castle'))   return '🏰';
+  if (c.includes('church'))   return '⛪';
+  if (c.includes('park'))     return '🌳';
+  if (c.includes('square'))   return '🏙️';
+  if (c.includes('fountain')) return '⛲';
+  if (c.includes('ruins'))    return '🏚️';
+  if (c.includes('art'))      return '🎨';
+  if (c.includes('view'))     return '🌄';
+  if (c.includes('restaurant') || c.includes('food')) return '🍽️';
+  if (c.includes('cafe') || c.includes('coffee')) return '☕';
+  return '📍';
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   const [year, month, day] = dateStr.split('-');
@@ -30,13 +57,166 @@ const formatDate = (dateStr: string) => {
 
 const formatTime = (time: string) => time?.slice(0, 5) ?? '';
 
+// ─── Swipeable card wrapper ───────────────────────────────────────────────────
+
+function SwipeableCard({
+  children,
+  onSwipeLeft,
+  disabled = false,
+}: {
+  children: React.ReactNode;
+  onSwipeLeft: () => void;
+  disabled?: boolean;
+}) {
+  const translateX = useSharedValue(0);
+
+  const pan = Gesture.Pan()
+    .enabled(!disabled)
+    .activeOffsetX([-15, 15])
+    .failOffsetY([-12, 12])
+    .onUpdate(e => {
+      if (e.translationX < 0) translateX.value = e.translationX;
+    })
+    .onEnd(e => {
+      if (e.translationX < -80) {
+        translateX.value = withTiming(-130, { duration: 120 }, () => {
+          translateX.value = withSpring(0);
+          runOnJS(onSwipeLeft)();
+        });
+      } else {
+        translateX.value = withSpring(0);
+      }
+    });
+
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  return (
+    <View style={swipeStyles.wrapper}>
+      {!disabled && (
+        <View style={swipeStyles.hint}>
+          <Text style={swipeStyles.hintIcon}>🔄</Text>
+          <Text style={swipeStyles.hintLabel}>Trocar</Text>
+        </View>
+      )}
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[swipeStyles.cardWrapper, cardStyle]}>
+          {children}
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
+const swipeStyles = StyleSheet.create({
+  wrapper: { flex: 1, position: 'relative' },
+  hint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#e8f0fa',
+    borderRadius: 16,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 22,
+    gap: 4,
+  },
+  hintIcon: { fontSize: 22 },
+  hintLabel: { fontSize: 12, fontWeight: '700', color: '#023665' },
+  cardWrapper: { flex: 1 },
+});
+
+// ─── Alternatives modal ───────────────────────────────────────────────────────
+
+function AltCard({ alt, onPress }: { alt: Place; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={altStyles.card} onPress={onPress} activeOpacity={0.8}>
+      <View style={altStyles.iconBox}>
+        <Text style={altStyles.iconText}>{categoryIcon(alt.category)}</Text>
+      </View>
+      <View style={altStyles.info}>
+        <Text style={altStyles.name} numberOfLines={1}>{alt.name}</Text>
+        <Text style={altStyles.cat} numberOfLines={1}>{alt.category}</Text>
+        {alt.address ? (
+          <Text style={altStyles.addr} numberOfLines={1}>{alt.address}</Text>
+        ) : null}
+      </View>
+      {alt.fee === 'no' && (
+        <View style={altStyles.freeBadge}><Text style={altStyles.freeBadgeText}>🆓</Text></View>
+      )}
+      {alt.fee === 'yes' && (
+        <View style={altStyles.paidBadge}><Text style={altStyles.paidBadgeText}>💰</Text></View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+const altStyles = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 24, paddingBottom: 40, paddingTop: 8,
+  },
+  handle: {
+    width: 40, height: 4, backgroundColor: '#e2e8f0',
+    borderRadius: 2, alignSelf: 'center', marginBottom: 16,
+  },
+  title: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: '#6B7280', marginBottom: 20 },
+  loading: { alignItems: 'center', paddingVertical: 32, gap: 12 },
+  loadingText: { fontSize: 14, color: '#6B7280' },
+  empty: { alignItems: 'center', paddingVertical: 32 },
+  emptyText: { fontSize: 14, color: '#9CA3AF' },
+  list: { gap: 10, marginBottom: 20 },
+  card: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#f8fafc', borderRadius: 14,
+    padding: 14, borderWidth: 1.5, borderColor: '#e2e8f0', gap: 12,
+  },
+  iconBox: {
+    width: 48, height: 48, borderRadius: 12,
+    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+  },
+  iconText: { fontSize: 24 },
+  info: { flex: 1 },
+  name: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  cat: { fontSize: 12, color: PRIMARY, marginTop: 2, textTransform: 'capitalize', fontWeight: '500' },
+  addr: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
+  freeBadge: { backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  freeBadgeText: { fontSize: 12 },
+  paidBadge: { backgroundColor: '#FFF7ED', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  paidBadgeText: { fontSize: 12 },
+  cancelBtn: {
+    borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  cancelBtnText: { fontSize: 15, fontWeight: '600', color: '#6B7280' },
+});
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 export default function ItinerarioTab() {
-  const { itinerary, loading, highlightedPlaceIndex, setHighlightedPlace, setFocusedMapPlace } = useItineraryStore();
+  const { user } = useAuth();
+  const {
+    itinerary, loading,
+    highlightedPlaceIndex, setHighlightedPlace,
+    setFocusedMapPlace, replacePlace,
+  } = useItineraryStore();
+
   const [layoutReady, setLayoutReady] = React.useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const router = useRouter();
   const cardOffsets = useRef<number[]>([]);
 
+  // ─── Alternatives state ───────────────────────────────────────────────────
+  const [showAltModal, setShowAltModal] = useState(false);
+  const [swipedPlace, setSwipedPlace] = useState<Places | null>(null);
+  const [alternatives, setAlternatives] = useState<Place[]>([]);
+  const [loadingAlts, setLoadingAlts] = useState(false);
+
+  // Scroll to highlighted card when coming from map
   useEffect(() => {
     if (highlightedPlaceIndex === null) return;
     const offset = cardOffsets.current[highlightedPlaceIndex];
@@ -54,33 +234,98 @@ export default function ItinerarioTab() {
       if (!layoutReady) return;
       if (!itinerary?.places?.length) return;
 
-      const sorted = [...itinerary.places].sort(
-        (a, b) => a.orderIndex - b.orderIndex
+      const sorted = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
+      const firstUpcomingIndex = sorted.findIndex(
+        place => !isPlacePast(itinerary.startDate, place.estimatedVisitTime)
       );
-
-      const firstUpcomingIndex = sorted.findIndex(place => {
-        return !isPlacePast(itinerary.startDate, place.estimatedVisitTime);
-      });
-
       if (firstUpcomingIndex === -1) return;
 
       requestAnimationFrame(() => {
         const offset = cardOffsets.current[firstUpcomingIndex];
         if (offset == null) return;
-
-        scrollRef.current?.scrollTo({
-          y: Math.max(0, offset - 100),
-          animated: true,
-        });
+        scrollRef.current?.scrollTo({ y: Math.max(0, offset - 100), animated: true });
       });
     }, [layoutReady, itinerary])
   );
 
+  // ─── Swipe handler ────────────────────────────────────────────────────────
+  const handleSwipeLeft = useCallback(async (place: Places) => {
+    setSwipedPlace(place);
+    setShowAltModal(true);
+    setLoadingAlts(true);
+    setAlternatives([]);
+
+    const tp = user?.travelerProfile;
+    const profile = tp && tp !== 'SKIPPED' ? tp : undefined;
+
+    const currentNames = new Set(itinerary?.places.map(p => p.name) ?? []);
+    const exclude = (list: Place[]) =>
+      list.filter(p => p.name !== place.name && !currentNames.has(p.name));
+    const pick = (list: Place[], n: number) =>
+      [...list].sort(() => Math.random() - 0.5).slice(0, n);
+
+    try {
+      const allByProfile = await placesService.getAll({ profile });
+      const available = exclude(allByProfile);
+
+      const sameCategory = available.filter(p => p.category === place.category);
+      const same2 = pick(sameCategory, 2);
+
+      const same2Names = new Set(same2.map(p => p.name));
+      const different = available.filter(
+        p => p.category !== place.category && !same2Names.has(p.name)
+      );
+      const diff1 = pick(different, 1);
+
+      const result = [...same2, ...diff1];
+
+      if (result.length === 0) {
+        setAlternatives(pick(available, 3));
+      } else {
+        setAlternatives(result);
+      }
+    } catch {
+      setAlternatives([]);
+    } finally {
+      setLoadingAlts(false);
+    }
+  }, [itinerary, user]);
+
+  const handleSelectAlternative = useCallback(async (alt: Place) => {
+    if (!swipedPlace) return;
+    const newPlace: Places = {
+      name: alt.name,
+      address: alt.address,
+      latitude: alt.latitude,
+      longitude: alt.longitude,
+      estimatedVisitTime: swipedPlace.estimatedVisitTime,
+      orderIndex: swipedPlace.orderIndex,
+      openingHours: alt.openingHours ?? null,
+      category: alt.category ?? null,
+      fee: alt.fee ?? null,
+    };
+    setShowAltModal(false);
+    setSwipedPlace(null);
+    setAlternatives([]);
+    try {
+      await replacePlace(swipedPlace.orderIndex, newPlace);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar a alteração.');
+    }
+  }, [swipedPlace, replacePlace]);
+
+  const handleCancelAlt = useCallback(() => {
+    setShowAltModal(false);
+    setSwipedPlace(null);
+    setAlternatives([]);
+  }, []);
+
+  // ─── PDF Export ───────────────────────────────────────────────────────────
   const handleExportPDF = async () => {
     if (!itinerary) return;
 
     const sortedPlaces = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
-    
+
     let placesHtml = '';
     sortedPlaces.forEach((place, index) => {
       placesHtml += `
@@ -146,6 +391,8 @@ export default function ItinerarioTab() {
     }
   };
 
+  // ─── Render ───────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -206,6 +453,8 @@ export default function ItinerarioTab() {
 
         {/* Timeline */}
         <Text style={styles.sectionLabel}>PARADAS DO ROTEIRO</Text>
+        <Text style={styles.swipeHint}>← Deslize um card para trocar o lugar</Text>
+
         <View style={styles.timeline}>
           {sorted.map((place, idx) => {
             const isPast = isPlacePast(itinerary.startDate, place.estimatedVisitTime);
@@ -215,83 +464,123 @@ export default function ItinerarioTab() {
 
             return (
               <View
-                key={idx}
+                key={`${place.name}-${place.orderIndex}`}
                 style={styles.timelineRow}
                 onLayout={e => {
                   cardOffsets.current[idx] = e.nativeEvent.layout.y;
-                  if (cardOffsets.current.length === sorted.length) {
-                    setLayoutReady(true);
-                  }
+                  if (cardOffsets.current.length === sorted.length) setLayoutReady(true);
                 }}
               >
                 {/* Rail */}
                 <View style={styles.rail}>
-                  <View style={[styles.dot, isPast ? { backgroundColor: '#9aa4b2', opacity: 0.6 } : { backgroundColor: color }]} />
+                  <View style={[
+                    styles.dot,
+                    isPast
+                      ? { backgroundColor: '#9aa4b2', opacity: 0.6 }
+                      : { backgroundColor: color },
+                  ]} />
                   {!isLast && <View style={styles.line} />}
                 </View>
 
-                {/* Card */}
-                <TouchableOpacity
-                  style={[
-                    styles.card,
-                    isLast && { marginBottom: 0 },
-                    isHighlighted && { borderWidth: 2, borderColor: color, shadowOpacity: 0.18 },
-                    isPast && { backgroundColor: '#d9d9d9', opacity: 0.3 },
-                  ]}
-                  activeOpacity={0.75}
-                  onPress={() => {
-                    setFocusedMapPlace(idx);
-                    router.push({
-                      pathname: '/mapa',
-                      params: { from: 'itinerario' }
-                    });
-                  }}
-                >
-                  <View style={styles.cardTop}>
-                    <View style={[styles.orderBadge, { backgroundColor: color }]}>
-                      <Text style={styles.orderText}>{idx + 1}</Text>
+                {/* Swipeable card — apenas futuros */}
+                <SwipeableCard onSwipeLeft={() => handleSwipeLeft(place)} disabled={isPast}>
+                  <TouchableOpacity
+                    style={[
+                      styles.card,
+                      isLast && { marginBottom: 0 },
+                      isHighlighted && { borderWidth: 2, borderColor: color, shadowOpacity: 0.18 },
+                      isPast && { backgroundColor: '#d9d9d9', opacity: 0.3 },
+                    ]}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      setFocusedMapPlace(idx);
+                      router.push({ pathname: '/mapa', params: { from: 'itinerario' } });
+                    }}
+                  >
+                    <View style={styles.cardTop}>
+                      <View style={[styles.orderBadge, { backgroundColor: color }]}>
+                        <Text style={styles.orderText}>{idx + 1}</Text>
+                      </View>
+                      <Text style={[styles.timeText, { color }]}>{formatTime(place.estimatedVisitTime)}</Text>
                     </View>
-                    <Text style={[styles.timeText, { color }]}>{formatTime(place.estimatedVisitTime)}</Text>
-                  </View>
-                  <Text style={styles.placeName}>{place.name}</Text>
-                  <View style={styles.tagsRow}>
-                    {place.category ? (
-                      <View style={styles.categoryBadge}>
-                        <Text style={styles.categoryText}>
-                          {place.category === 'museum' ? '🏛️ Museum'
-                            : place.category === 'attraction' ? '🎯 Attraction'
-                            : place.category === 'park' ? '🌳 Park'
-                            : place.category === 'church' ? '⛪ Church'
-                            : `📍 ${place.category.charAt(0).toUpperCase() + place.category.slice(1)}`}
-                        </Text>
+                    <Text style={styles.placeName}>{place.name}</Text>
+                    <View style={styles.tagsRow}>
+                      {place.category ? (
+                        <View style={styles.categoryBadge}>
+                          <Text style={styles.categoryText}>
+                            {categoryIcon(place.category)}{' '}
+                            {place.category.charAt(0).toUpperCase() + place.category.slice(1)}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {place.fee === 'yes' ? (
+                        <View style={styles.feeBadge}>
+                          <Text style={styles.feeText}>🎟️ Paid entry</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.placeAddress} numberOfLines={2}>{place.address}</Text>
+                    {place.openingHours ? (
+                      <View style={styles.hoursRow}>
+                        <Text style={styles.hoursIcon}>🕐</Text>
+                        <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
                       </View>
                     ) : null}
-                    {place.fee === 'yes' ? (
-                      <View style={styles.feeBadge}>
-                        <Text style={styles.feeText}>🎟️ Paid entry</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={styles.placeAddress} numberOfLines={2}>{place.address}</Text>
-                  {place.openingHours ? (
-                    <View style={styles.hoursRow}>
-                      <Text style={styles.hoursIcon}>🕐</Text>
-                      <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
-                    </View>
-                  ) : null}
-                  <Text style={[styles.mapHint, { color }]}>Ver no mapa ↗</Text>
-                </TouchableOpacity>
+                    <Text style={[styles.mapHint, { color }]}>View on map ↗</Text>
+                  </TouchableOpacity>
+                </SwipeableCard>
               </View>
             );
           })}
         </View>
 
         {/* Botão de Exportar PDF */}
-          <TouchableOpacity style={styles.btnExport} onPress={handleExportPDF}>
-            <Text style={styles.btnExportText}>📄 Exportar em PDF</Text>
-          </TouchableOpacity>
-          
+        <TouchableOpacity style={styles.btnExport} onPress={handleExportPDF}>
+          <Text style={styles.btnExportText}>📄 Exportar em PDF</Text>
+        </TouchableOpacity>
+
       </ScrollView>
+
+      {/* ─── Modal de alternativas ─── */}
+      <Modal
+        visible={showAltModal}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCancelAlt}
+      >
+        <View style={altStyles.overlay}>
+          <View style={altStyles.sheet}>
+            <View style={altStyles.handle} />
+            <Text style={altStyles.title}>Trocar lugar</Text>
+            {swipedPlace && (
+              <Text style={altStyles.subtitle}>
+                Substituir "{swipedPlace.name}" por:
+              </Text>
+            )}
+
+            {loadingAlts ? (
+              <View style={altStyles.loading}>
+                <ActivityIndicator size="large" color={PRIMARY} />
+                <Text style={altStyles.loadingText}>Buscando alternativas...</Text>
+              </View>
+            ) : alternatives.length === 0 ? (
+              <View style={altStyles.empty}>
+                <Text style={altStyles.emptyText}>Nenhuma alternativa encontrada.</Text>
+              </View>
+            ) : (
+              <View style={altStyles.list}>
+                {alternatives.map((alt, i) => (
+                  <AltCard key={i} alt={alt} onPress={() => handleSelectAlternative(alt)} />
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity style={altStyles.cancelBtn} onPress={handleCancelAlt}>
+              <Text style={altStyles.cancelBtnText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -304,24 +593,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   loadingText: { marginTop: 16, fontSize: 15, color: '#888' },
   emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 32,
-    backgroundColor: '#f9f9f9',
-    flex: 1,
-    justifyContent: 'center',
+    alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32,
+    backgroundColor: '#f9f9f9', flex: 1, justifyContent: 'center',
   },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 },
   emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center' },
 
   headerCard: {
-    backgroundColor: PRIMARY,
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
+    backgroundColor: PRIMARY, borderRadius: 20, padding: 24, marginBottom: 24,
   },
-  headerLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 },
+  headerLabel: {
+    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.55)',
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4,
+  },
   headerDates: { fontSize: 18, fontWeight: 'bold', color: '#fff', marginBottom: 20 },
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, alignItems: 'center' },
@@ -331,12 +616,11 @@ const styles = StyleSheet.create({
   activeDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#4ade80', marginBottom: 4 },
 
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8a9ab0',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 16,
+    fontSize: 11, fontWeight: '700', color: '#8a9ab0',
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6,
+  },
+  swipeHint: {
+    fontSize: 12, color: '#aab4c2', marginBottom: 16, fontStyle: 'italic',
   },
 
   timeline: {},
@@ -361,24 +645,19 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   orderBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
   },
   orderText: { fontSize: 12, fontWeight: 'bold', color: '#fff' },
   timeText: { fontSize: 13, fontWeight: '700' },
   placeName: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
   categoryBadge: {
-    backgroundColor: '#eef2f7', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: '#eef2f7', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
   },
   categoryText: { fontSize: 12, fontWeight: '600', color: '#4a5568' },
   feeBadge: {
-    backgroundColor: '#fff7ed', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: '#fff7ed', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
   },
   feeText: { fontSize: 12, fontWeight: '600', color: '#c2410c' },
   placeAddress: { fontSize: 13, color: '#8a9ab0', lineHeight: 18, marginBottom: 6 },

@@ -234,17 +234,22 @@ export default function RegisterScreen() {
             )}
           </Field>
           <Field label="Repetir Senha" error={errors.confirmPassword}>
-            <View style={[styles.passwordWrapper, errors.confirmPassword ? styles.inputError : null]}>
+            <View style={[
+              styles.passwordWrapper,
+              errors.confirmPassword ? styles.inputError : null,
+              confirmPassword.length > 0 && password === confirmPassword ? styles.inputOk : null,
+            ]}>
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Confirme sua senha"
                 placeholderTextColor={PLACEHOLDER}
                 value={confirmPassword}
-                onChangeText={(t) => { 
-                  setConfirmPassword(t); 
-                  if (errors.confirmPassword) setErrors(p => ({ ...p, confirmPassword: '' })); 
+                onChangeText={(t) => {
+                  setConfirmPassword(t);
+                  if (errors.confirmPassword) setErrors(p => ({ ...p, confirmPassword: '' }));
                 }}
                 secureTextEntry={!showConfirmPassword}
+                returnKeyType="done"
               />
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
                 {showConfirmPassword ? (
@@ -289,6 +294,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '700', color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15, color: '#1a1a1a' },
   inputError: { borderColor: '#EF4444' },
+  inputOk: { borderColor: '#22c55e' },
   errorText: { color: '#EF4444', fontSize: 11, marginTop: 4, marginLeft: 2 },
   //dropdownWrapper: { position: 'relative', zIndex: 10 },
   dropdownTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11 },

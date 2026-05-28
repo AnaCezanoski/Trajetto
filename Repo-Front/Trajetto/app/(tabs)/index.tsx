@@ -16,6 +16,202 @@ import { useAuth } from '../../context/AuthContext';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
 
+function DateSection({ itinerary }: { itinerary: Itinerary }) {
+  const updateDate = useItineraryStore(s => s.updateDate);
+  const [dateText, setDateText] = useState(itinerary.date ?? '');
+  const [saving, setSaving] = useState(false);
+  const changed = dateText !== (itinerary.date ?? '');
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateDate(itinerary.id, dateText.trim() || null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={dateStyles.container}>
+      <Text style={dateStyles.label}>Data</Text>
+      <TextInput
+        style={dateStyles.input}
+        value={dateText}
+        onChangeText={setDateText}
+      />
+      {changed && (
+        <TouchableOpacity
+          style={dateStyles.saveBtn}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          {saving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={dateStyles.saveBtnText}>Salvar</Text>
+          }
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const dateStyles = StyleSheet.create({
+  container: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f4f8',
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a9ab0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e8edf3',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    color: '#1a1a1a',
+    backgroundColor: '#f8fafc',
+  },
+  saveBtn: {
+    marginTop: 8,
+    backgroundColor: '#023665',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+});
+
+function RatingSection({ itinerary }: { itinerary: Itinerary }) {
+  const rateItinerary = useItineraryStore(s => s.rateItinerary);
+  const [desc, setDesc] = useState(itinerary.ratingDescription ?? '');
+  const [savingRating, setSavingRating] = useState(false);
+  const [savingDesc, setSavingDesc] = useState(false);
+  const currentRating = itinerary.rating ?? 0;
+  const descChanged = desc !== (itinerary.ratingDescription ?? '');
+
+  const handleStarPress = async (star: number) => {
+    const newRating = currentRating === star ? 0 : star;
+    setSavingRating(true);
+    try {
+      await rateItinerary(itinerary.id, newRating, itinerary.ratingDescription ?? null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar a avaliação.');
+    } finally {
+      setSavingRating(false);
+    }
+  };
+
+  const handleSaveDesc = async () => {
+    setSavingDesc(true);
+    try {
+      await rateItinerary(itinerary.id, itinerary.rating ?? null, desc || null);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar o comentário.');
+    } finally {
+      setSavingDesc(false);
+    }
+  };
+
+  return (
+    <View style={ratingStyles.container}>
+      <View style={ratingStyles.starsRow}>
+        <Text style={ratingStyles.label}>Avaliação</Text>
+        {savingRating ? (
+          <ActivityIndicator size="small" color="#f59e0b" />
+        ) : (
+          <View style={ratingStyles.stars}>
+            {[1, 2, 3, 4, 5].map(star => (
+              <TouchableOpacity key={star} onPress={() => handleStarPress(star)} activeOpacity={0.7}>
+                <Text style={star <= currentRating ? ratingStyles.starFilled : ratingStyles.starEmpty}>
+                  {star <= currentRating ? '★' : '☆'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+      <TextInput
+        style={ratingStyles.descInput}
+        placeholder="Comentário sobre o roteiro..."
+        placeholderTextColor="#b0bec5"
+        value={desc}
+        onChangeText={setDesc}
+        multiline
+        numberOfLines={2}
+      />
+      {descChanged && (
+        <TouchableOpacity
+          style={ratingStyles.saveBtn}
+          onPress={handleSaveDesc}
+          disabled={savingDesc}
+          activeOpacity={0.8}
+        >
+          {savingDesc
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={ratingStyles.saveBtnText}>Salvar comentário</Text>
+          }
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const ratingStyles = StyleSheet.create({
+  container: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f4f8',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8a9ab0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  stars: { flexDirection: 'row', gap: 4 },
+  starFilled: { fontSize: 24, color: '#f59e0b' },
+  starEmpty: { fontSize: 24, color: '#d1d5db' },
+  descInput: {
+    borderWidth: 1,
+    borderColor: '#e8edf3',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 13,
+    color: '#1a1a1a',
+    backgroundColor: '#f8fafc',
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  saveBtn: {
+    marginTop: 8,
+    backgroundColor: '#023665',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+});
+
+
 const PRIMARY = '#023665';
 
 const formatDate = (dateStr: string) => {
@@ -256,6 +452,8 @@ export default function RoteirosTab() {
                     })}
                 </View>
               )}
+              {!selectMode && <DateSection itinerary={itinerary} />}
+              {!selectMode && <RatingSection itinerary={itinerary} />}
             </TouchableOpacity>
 
             {!selectMode && (
@@ -327,6 +525,8 @@ export default function RoteirosTab() {
                         </>
                       )}
                     </TouchableOpacity>
+                    {!selectMode && <DateSection itinerary={item} />}
+                    {!selectMode && <RatingSection itinerary={item} />}
                   </View>
                 ))}
               </>

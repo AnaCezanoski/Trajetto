@@ -1,7 +1,9 @@
 package com.trajetto.backend.itinerary.controller;
 
+import com.trajetto.backend.itinerary.dto.DateRequestDTO;
 import com.trajetto.backend.itinerary.dto.GenerateItineraryRequestDTO;
 import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
+import com.trajetto.backend.itinerary.dto.PlaceRequestDTO;
 import com.trajetto.backend.itinerary.dto.RatingRequestDTO;
 import com.trajetto.backend.itinerary.service.ItineraryService;
 import java.util.List;
@@ -82,6 +84,29 @@ public class ItineraryController {
             @RequestBody RatingRequestDTO req) {
         try {
             return ResponseEntity.ok(itineraryService.updateRating(itineraryId, req));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PatchMapping("/{itineraryId}/date")
+    public ResponseEntity<ItineraryResponseDTO> updateDate(
+            @PathVariable Long itineraryId,
+            @RequestBody DateRequestDTO req) {
+        try {
+            return ResponseEntity.ok(itineraryService.updateDate(itineraryId, req));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PatchMapping("/{itineraryId}/place/{orderIndex}")
+    public ResponseEntity<ItineraryResponseDTO> replacePlace(
+            @PathVariable Long itineraryId,
+            @PathVariable Integer orderIndex,
+            @RequestBody PlaceRequestDTO req) {
+        try {
+            return ResponseEntity.ok(itineraryService.replacePlace(itineraryId, orderIndex, req));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
