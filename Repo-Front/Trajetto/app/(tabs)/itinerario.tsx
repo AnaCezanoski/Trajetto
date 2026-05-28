@@ -2,6 +2,9 @@ import { PLACE_COLORS } from '@/constants/placeColors';
 import { useAuth } from '@/context/AuthContext';
 import { Places, useItineraryStore } from '@/hooks/itineraryStore';
 import { Place, placesService } from '@/services/placesService';
+import { RatingService, RatingSummary } from '@/services/ratingService';
+import StarRating from '@/components/Rating';
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -14,6 +17,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -215,6 +220,45 @@ export default function ItinerarioTab() {
   const [swipedPlace, setSwipedPlace] = useState<Places | null>(null);
   const [alternatives, setAlternatives] = useState<Place[]>([]);
   const [loadingAlts, setLoadingAlts] = useState(false);
+
+  // ─── Rating / BottomSheet state ───────────────────────────────────────────
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const commentInputRef = useRef<TextInput>(null);
+  const [selectedPlace, setSelectedPlace] = useState<any>(null);
+  const [allRatings, setAllRatings] = useState<any[]>([]);
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [ratingData, setRatingData] = useState<RatingSummary | undefined>();
+  const [myRating, setMyRating] = useState<any>(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [comment, setComment] = useState('');
+  const snapPoints = React.useMemo(() => ['45%', '90%'], []);
+
+  const openBottomSheet = (place: any) => {
+    setSelectedPlace(place);
+    setIsRatingOpen(false);
+    setRatingValue(0);
+    setComment('');
+    setMyRating(null);
+    setAllRatings([]);
+    bottomSheetRef.current?.expand();
+  };
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    []
+  );
+
+  useEffect(() => {
+    if (!selectedPlace?.xid) return;
+    RatingService.getSummary(selectedPlace.xid).then(setRatingData).catch(console.log);
+    RatingService.getByPlace(selectedPlace.xid).then((ratings) => {
+      setAllRatings(ratings);
+      const mine = ratings.find((r: any) => r.userId === user?.id);
+      setMyRating(mine ?? null);
+    });
+  }, [selectedPlace]);
 
   // Scroll to highlighted card when coming from map
   useEffect(() => {
@@ -526,7 +570,16 @@ export default function ItinerarioTab() {
                         <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
                       </View>
                     ) : null}
-                    <Text style={[styles.mapHint, { color }]}>View on map ↗</Text>
+                    <View style={styles.infoSection}>
+                      <Text style={[styles.mapHint, { color }]}>Ver no mapa ↗</Text>
+                      <TouchableOpacity
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        onPress={() => openBottomSheet(place)}
+                      >
+                        <Text style={[styles.mapHint, { color }]}>Sobre</Text>
+                        <Text style={{ fontSize: 11, color }}>ℹ️</Text>
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
                 </SwipeableCard>
               </View>
@@ -581,6 +634,170 @@ export default function ItinerarioTab() {
           </View>
         </View>
       </Modal>
+
+      {/* ─── BottomSheet de detalhes e rating ─── */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={snapPoints}
+        enablePanDownToClose
+        backdropComponent={renderBackdrop}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+      >
+        <BottomSheetView style={styles.bottomSheetContent}>
+          <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+            {selectedPlace && (
+              <>
+                <Text style={[styles.bsTextPrimary, { marginBottom: 12 }]}>{selectedPlace.name}</Text>
+
+                {selectedPlace.category && (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12 }}>
+                      <Text style={styles.bsTextSecondary}>Categoria:</Text>
+                      <Text style={styles.bsTextTertiary}>{selectedPlace.category}</Text>
+                    </View>
+                    <View style={styles.bsDivider} />
+                  </>
+                )}
+
+                {selectedPlace.address && (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Text style={styles.bsTextTertiary}>📍 {selectedPlace.address}</Text>
+                    </View>
+                    <View style={styles.bsDivider} />
+                  </>
+                )}
+
+                {selectedPlace.openingHours && (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Text style={styles.bsTextTertiary}>🕐 {selectedPlace.openingHours}</Text>
+                    </View>
+                    <View style={styles.bsDivider} />
+                  </>
+                )}
+
+                <TouchableOpacity onPress={() => setIsRatingOpen(!isRatingOpen)}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={styles.bsTextTertiary}>⭐ {ratingData?.average?.toFixed(1) ?? '0.0'}</Text>
+                    <StarRating value={ratingData?.average ?? 0} size={18} onChange={() => {}} readonly />
+                    <Text style={styles.bsTextTertiary}>{ratingData?.count ?? 0} visitaram</Text>
+                    <Text style={{ marginLeft: 'auto', color: PRIMARY }}>{isRatingOpen ? '▲' : '▼'}</Text>
+                  </View>
+                  <View style={styles.bsDivider} />
+                </TouchableOpacity>
+
+                {isRatingOpen && (
+                  <>
+                    <View style={styles.ratingDropdown}>
+                      <Text style={styles.ratingTitle}>Avaliar lugar</Text>
+                      <StarRating value={ratingValue} size={22} onChange={setRatingValue} />
+                      <TextInput
+                        ref={commentInputRef}
+                        value={comment}
+                        onChangeText={setComment}
+                        placeholder="Escreva um comentário..."
+                        placeholderTextColor="#9aa4b2"
+                        style={styles.ratingInput}
+                        multiline
+                      />
+                      <TouchableOpacity
+                        style={styles.ratingButton}
+                        onPress={async () => {
+                          if (!selectedPlace?.xid) return;
+                          try {
+                            if (myRating) {
+                              const updated = await RatingService.update(myRating.id, {
+                                userId: user?.id ?? 0,
+                                rating: ratingValue,
+                                comment,
+                              });
+                              setMyRating(updated);
+                            } else {
+                              const created = await RatingService.create({
+                                placeId: selectedPlace.xid,
+                                userId: user?.id ?? 0,
+                                userName: `${user?.firstName} ${user?.lastName}`,
+                                rating: ratingValue,
+                                comment,
+                              });
+                              setMyRating(created);
+                            }
+                            setIsRatingOpen(false);
+                            const summary = await RatingService.getSummary(selectedPlace.xid);
+                            setRatingData(summary);
+                            const ratings = await RatingService.getByPlace(selectedPlace.xid);
+                            setAllRatings(ratings);
+                          } catch (e) {
+                            console.error('Erro ao salvar avaliação:', e);
+                          }
+                        }}
+                      >
+                        <Text style={styles.ratingButtonText}>Salvar avaliação</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {allRatings.map((r) => {
+                      const isMe = r.userId === user?.id;
+                      const name = isMe ? `${user?.firstName} ${user?.lastName}` : r.userName ?? `Usuário ${r.userId}`;
+                      return (
+                        <View key={r.id} style={styles.reviewCard}>
+                          <View style={styles.reviewHeader}>
+                            <View style={styles.reviewAvatar}>
+                              <Text style={styles.reviewAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.reviewName}>{name}</Text>
+                              <StarRating value={r.rating} size={14} readonly onChange={() => {}} />
+                            </View>
+                            {isMe && (
+                              <View style={{ flexDirection: 'row', gap: 8 }}>
+                                <TouchableOpacity onPress={() => {
+                                  setMyRating(r);
+                                  setRatingValue(r.rating);
+                                  setComment(r.comment ?? '');
+                                  setIsRatingOpen(true);
+                                  setTimeout(() => commentInputRef.current?.focus(), 100);
+                                }}>
+                                  <Text style={{ fontSize: 16 }}>✏️</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => {
+                                  Alert.alert('Excluir avaliação', 'Tem certeza?', [
+                                    { text: 'Cancelar', style: 'cancel' },
+                                    {
+                                      text: 'Excluir', style: 'destructive',
+                                      onPress: async () => {
+                                        try {
+                                          await RatingService.delete(r.id, user?.id ?? 0);
+                                          setMyRating(null);
+                                          const summary = await RatingService.getSummary(selectedPlace.xid);
+                                          setRatingData(summary);
+                                          const ratings = await RatingService.getByPlace(selectedPlace.xid);
+                                          setAllRatings(ratings);
+                                        } catch (e) { console.error(e); }
+                                      },
+                                    },
+                                  ]);
+                                }}>
+                                  <Text style={{ fontSize: 16 }}>🗑️</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                          {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+                        </View>
+                      );
+                    })}
+                  </>
+                )}
+              </>
+            )}
+          </Pressable>
+        </BottomSheetView>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -665,6 +882,38 @@ const styles = StyleSheet.create({
   hoursIcon: { fontSize: 12, marginTop: 1 },
   hoursText: { fontSize: 12, color: '#6b7280', flex: 1, lineHeight: 17 },
   mapHint: { fontSize: 11, fontWeight: '600', opacity: 0.75 },
+  infoSection: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  bottomSheetContent: { flex: 1, margin: 16, gap: 5, paddingBottom: 30 },
+  bsTextPrimary: { fontSize: 22, fontWeight: 'bold', color: PRIMARY },
+  bsTextSecondary: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a' },
+  bsTextTertiary: { fontSize: 16, color: '#4a5568' },
+  bsDivider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 8 },
+
+  ratingDropdown: {
+    marginTop: 10, padding: 12, backgroundColor: '#f8fafc',
+    borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', gap: 10,
+  },
+  ratingTitle: { fontSize: 13, fontWeight: '700', color: '#1a1a1a' },
+  ratingInput: {
+    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10,
+    padding: 10, fontSize: 13, minHeight: 60, textAlignVertical: 'top', backgroundColor: '#fff',
+  },
+  ratingButton: { backgroundColor: PRIMARY, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  ratingButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  reviewCard: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: '#e5e7eb', gap: 8, marginTop: 16,
+  },
+  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  reviewAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center',
+  },
+  reviewAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  reviewName: { fontSize: 13, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
+  reviewComment: { fontSize: 13, color: '#4a5568', lineHeight: 18 },
 
   btnExport: {
     marginTop: 24,
