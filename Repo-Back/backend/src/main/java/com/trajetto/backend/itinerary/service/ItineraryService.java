@@ -133,9 +133,9 @@ public class ItineraryService {
         }).sorted(Comparator.comparingDouble(ScoredPlace::score).reversed())
                 .collect(Collectors.toList());
 
-        // Pick top 6
+        // Pick top 7
         List<RomePlace> selected = scored.stream()
-                .limit(6)
+                .limit(7)
                 .map(ScoredPlace::place)
                 .collect(Collectors.toList());
 
@@ -166,7 +166,8 @@ public class ItineraryService {
         // Build and save new itinerary
         LocalTime[] times = {
                 LocalTime.of(9, 0), LocalTime.of(10, 30), LocalTime.of(12, 0),
-                LocalTime.of(14, 0), LocalTime.of(15, 30), LocalTime.of(17, 0)
+                LocalTime.of(14, 0), LocalTime.of(15, 30), LocalTime.of(17, 0),
+                LocalTime.of(21, 0)
         };
 
         ItineraryModel itinerary = new ItineraryModel();
