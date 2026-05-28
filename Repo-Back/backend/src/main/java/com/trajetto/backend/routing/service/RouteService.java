@@ -55,7 +55,9 @@ public class RouteService {
                 new ParameterizedTypeReference<Map<String, Object>>() {}
         );
 
+        @SuppressWarnings("unchecked")
         Map<String, Object> route = (Map<String, Object>) ((List<Object>) response.getBody().get("routes")).get(0);
+        @SuppressWarnings("unchecked")
         Map<String, Object> summary = (Map<String, Object>) route.get("summary");
 
         Map<String, Object> result = new HashMap<>();
