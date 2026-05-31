@@ -10,6 +10,9 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { Ionicons } from '@expo/vector-icons';
+
+const PRIMARY = '#006ecf';
 
 export default function TravelerTestScreen() {
   const router = useRouter();
@@ -49,7 +52,8 @@ export default function TravelerTestScreen() {
 
         {fromProfile && (
           <View style={styles.retakeBadge}>
-            <Text style={styles.retakeBadgeText}>🔄 Refazendo o teste</Text>
+            <Ionicons name="sync" size={16} color="#fff" />
+            <Text style={styles.retakeBadgeText}>Refazendo o teste</Text>
           </View>
         )}
 
@@ -93,7 +97,7 @@ export default function TravelerTestScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#023665' },
+  container: { flex: 1, backgroundColor: PRIMARY },
   content: {
     flex: 1,
     alignItems: 'center',
@@ -122,6 +126,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   retakeBadgeText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   dots: { flexDirection: 'row', gap: 8, marginTop: 40 },

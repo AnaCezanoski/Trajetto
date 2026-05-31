@@ -1,19 +1,20 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 type MenuItem = {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   danger?: boolean;
@@ -28,12 +29,12 @@ export default function PerfilTabContent() {
       title: 'Conta',
       items: [
         {
-          icon: '⚙️',
+          icon: 'settings-outline',
           label: 'Configurações',
           onPress: () => router.push('/ProfileScreen'),
         },
         {
-          icon: '🔔',
+          icon: 'notifications-outline',
           label: 'Notificações',
           onPress: () => {},
         },
@@ -43,12 +44,12 @@ export default function PerfilTabContent() {
       title: 'Viajante',
       items: [
         {
-          icon: '🧳',
+          icon: 'briefcase-outline',
           label: 'Refazer o teste de viajante',
           onPress: () => router.push('/TravelerTestScreen?source=profile'),
         },
         {
-          icon: '🗺️',
+          icon: 'map-outline',
           label: 'Explorar destinos',
           onPress: () => router.push('/ExploreScreen'),
         },
@@ -57,7 +58,7 @@ export default function PerfilTabContent() {
     {
       items: [
         {
-          icon: '🚪',
+          icon: 'log-out-outline',
           label: 'Sair',
           onPress: logout,
           danger: true,
@@ -67,12 +68,26 @@ export default function PerfilTabContent() {
   ];
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.safe}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.headerWrapper}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7}>
+                <Ionicons name="chevron-back" size={32} color={'white'} />
+              </TouchableOpacity>
+              <Text style={styles.headerText}>Meus Roteiros</Text>
+            </View>
+          </View>
+        </View>
 
         <View style={styles.heroSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarEmoji}>👤</Text>
+           <Ionicons name="person" size={40} color="white" />
           </View>
           <Text style={styles.userName}>
             {user?.firstName} {user?.lastName}
@@ -98,7 +113,12 @@ export default function PerfilTabContent() {
                     onPress={item.onPress}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.menuIcon}>{item.icon}</Text>
+                    <Ionicons 
+                      name={item.icon} 
+                      size={22} 
+                      color={item.danger ? '#EF4444' : '#4a5568'} 
+                      style={styles.menuIcon} 
+                    />
                     <Text style={[styles.menuLabel, item.danger && styles.dangerText]}>
                       {item.label}
                     </Text>
@@ -115,12 +135,13 @@ export default function PerfilTabContent() {
 
         <Text style={styles.version}>Trajetto v1.0</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f4f6f9' },
+  scrollView: { flex: 1 },
   content: { paddingBottom: 32 },
 
   heroSection: {
@@ -181,11 +202,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 18,
   },
-  menuIcon: { fontSize: 20, marginRight: 14, width: 28, textAlign: 'center' },
+  menuIcon: { marginRight: 14, width: 28, textAlign: 'center' },
   menuLabel: { flex: 1, fontSize: 16, color: '#1a1a1a', fontWeight: '500' },
   menuArrow: { fontSize: 22, color: '#c0ccd8', fontWeight: '300' },
   dangerText: { color: '#EF4444' },
   separator: { height: 1, backgroundColor: '#f0f3f7', marginLeft: 60 },
 
   version: { textAlign: 'center', marginTop: 24, fontSize: 12, color: '#b0bec5' },
+  headerWrapper: { paddingTop: 50, paddingHorizontal: 24, backgroundColor: PRIMARY },
+  headerRow: { flexDirection: 'row', alignItems: 'center', position: 'relative', height: 56 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  headerBackBtn: { paddingVertical: 4, paddingRight: 8, marginLeft: -12 },
+  headerText: { fontSize: 18, fontWeight: '700', color: 'white' },
+  headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
 });

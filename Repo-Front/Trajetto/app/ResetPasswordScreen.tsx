@@ -8,6 +8,7 @@ import { api } from '../services/api';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { validateEmail, validatePassword, passwordStrength } from '../utils/validators';
 import Svg, { Path } from 'react-native-svg';
+import CustomInput from '../components/CustomInput';
 
 const PRIMARY = '#023665';
 
@@ -19,14 +20,9 @@ export default function ResetPasswordScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Keep loading state
 
   const strength = passwordStrength(password);
-
-  const inputStyle = (field: string) => [
-    styles.input,
-    errors[field] ? styles.inputError : null,
-  ];
 
   const handleReset = async () => {
     const newErrors: Record<string, string> = {};
@@ -58,53 +54,34 @@ export default function ResetPasswordScreen() {
           <Text style={styles.cardTitle}>Redefinir senha</Text>
           <Text style={styles.cardSub}>Digite o código enviado para o seu e-mail e escolha uma nova senha.</Text>
 
-          <Text style={styles.inputLabel}>E-mail</Text>
-          <TextInput
-            style={inputStyle('email')}
-            placeholder="seu@email.com"
+          <CustomInput
+            label="E-mail"
+            type="email"
             value={email}
             onChangeText={(t) => { setEmail(t); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+            placeholder="seu@email.com"
             autoCapitalize="none"
-            keyboardType="email-address"
+            error={errors.email}
           />
-          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-          <Text style={styles.inputLabel}>Código de Verificação</Text>
-          <TextInput
-            style={inputStyle('code')}
-            placeholder="000000"
+          <CustomInput
+            label="Código de Verificação"
+            type="numeric"
             value={code}
             onChangeText={(t) => { setCode(t.replace(/\D/g, '')); if (errors.code) setErrors(prev => ({ ...prev, code: '' })); }}
-            keyboardType="numeric"
+            placeholder="000000"
             maxLength={6}
+            error={errors.code}
           />
-          {errors.code && <Text style={styles.errorText}>{errors.code}</Text>}
 
-          <Text style={styles.inputLabel}>Nova Senha</Text>
-          <View style={[styles.passwordWrapper, errors.password ? styles.inputError : null]}>
-            <TextInput
-              style={styles.passwordInput}
+          <CustomInput
+            label="Nova Senha"
+            type="password"
+            value={password}
+            onChangeText={(t) => { setPassword(t); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
               placeholder="••••••••"
-              placeholderTextColor="#aab"
-              value={password}
-              onChangeText={(t) => { setPassword(t); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn} activeOpacity={0.7}>
-              {showPassword ? (
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                  <Path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="#8a9ab0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <Path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="#8a9ab0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </Svg>
-              ) : (
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                  <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12A18.45 18.45 0 0 1 5.06 5.06M9.9 4.24A9.12 9.12 0 0 1 12 4C19 4 23 12 23 12A18.5 18.5 0 0 1 20.71 15.68M14.12 14.12A3 3 0 1 1 9.88 9.88" stroke="#8a9ab0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <Path d="M1 1L23 23" stroke="#8a9ab0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </Svg>
-              )}
-            </TouchableOpacity>
-          </View>
-          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+            error={errors.password}
+          />
 
           {password.length > 0 && (
             <View style={styles.passwordStrength}>
@@ -117,7 +94,7 @@ export default function ResetPasswordScreen() {
 
           <TouchableOpacity
             style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
-            onPress={handleReset}
+            onPress={handleReset} // Corrected to handleReset
             disabled={loading}
             activeOpacity={0.85}
           >
@@ -141,13 +118,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 24, padding: 28, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 6 },
   cardTitle: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 4 },
   cardSub: { fontSize: 14, color: '#8a9ab0', marginBottom: 24, lineHeight: 20 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#4a5568', marginBottom: 6 },
-  input: { backgroundColor: '#f8f9fb', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, padding: 14, marginBottom: 4, fontSize: 15, color: '#1a1a1a' },
-  inputError: { borderColor: '#EF4444' },
-  errorText: { color: '#EF4444', fontSize: 12, marginBottom: 8, marginLeft: 4 },
-  passwordWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8f9fb', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, marginBottom: 4 },
-  passwordInput: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#1a1a1a' },
-  eyeBtn: { padding: 4 },
   passwordStrength: { flexDirection: 'row', gap: 6, marginBottom: 16 },
   strengthBar: { flex: 1, height: 4, borderRadius: 2 },
   strengthOk: { backgroundColor: '#22c55e' },

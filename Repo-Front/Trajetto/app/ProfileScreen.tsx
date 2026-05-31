@@ -10,23 +10,18 @@ import {
   maskName, maskBirthDate, maskTelephone,
   validateProfileForm, toBirthDateISO, fromBirthDateISO,
 } from '../utils/validators';
+import CustomInput from '../components/CustomInput';
 import { Modal, FlatList } from 'react-native';
 import { countries } from '../utils/countries';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 const PLACEHOLDER = '#9ca3af';
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
-}
-
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -51,11 +46,6 @@ export default function ProfileScreen() {
     }).finally(() => setFetching(false));
   }, []);
 
-  const inputStyle = (field: string) => [
-    styles.input,
-    errors[field] ? styles.inputError : null,
-  ];
-
   const handleUpdate = async () => {
     const errs = validateProfileForm({ firstName, lastName, birthDate, telephone, email, country });
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -77,81 +67,91 @@ export default function ProfileScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 30}>
+
+      <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={32} color={'white'} />
+            </TouchableOpacity>
+            <Text style={styles.headerText}>Configurações</Text>
+          </View>
+        </View>
+      </View>
       <ScrollView style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
 
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarEmoji}>👤</Text>
+
+        <View style={{ paddingHorizontal: 24, }}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarCircle}>
+              <Ionicons name="person" size={40} color="white" />
+            </View>
+            <Text style={styles.avatarName}>{firstName} {lastName}</Text>
+            <Text style={styles.avatarEmail}>{email}</Text>
           </View>
-          <Text style={styles.avatarName}>{firstName} {lastName}</Text>
-          <Text style={styles.avatarEmail}>{email}</Text>
+
+
         </View>
 
-        <Text style={styles.sectionTitle}>Informações pessoais</Text>
-
         <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { marginBottom: 15 }]}>Informações pessoais</Text>
 
           <View style={styles.row}>
-            <Field label="Nome" error={errors.firstName}>
-              <TextInput
-                style={inputStyle('firstName')}
-                placeholder="Seu nome"
-                placeholderTextColor={PLACEHOLDER}
-                value={firstName}
-                onChangeText={(t) => { setFirstName(maskName(t)); if (errors.firstName) setErrors(p => ({ ...p, firstName: '' })); }}
-                autoCapitalize="words"
-              />
-            </Field>
-            <Field label="Sobrenome" error={errors.lastName}>
-              <TextInput
-                style={inputStyle('lastName')}
-                placeholder="Seu sobrenome"
-                placeholderTextColor={PLACEHOLDER}
-                value={lastName}
-                onChangeText={(t) => { setLastName(maskName(t)); if (errors.lastName) setErrors(p => ({ ...p, lastName: '' })); }}
-                autoCapitalize="words"
-              />
-            </Field>
-          </View>
-
-          <View style={styles.row}>
-            <Field label="Data de nascimento" error={errors.birthDate}>
-              <TextInput
-                style={inputStyle('birthDate')}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor={PLACEHOLDER}
-                value={birthDate}
-                onChangeText={(t) => { setBirthDate(maskBirthDate(t)); if (errors.birthDate) setErrors(p => ({ ...p, birthDate: '' })); }}
-                keyboardType="numeric"
-                maxLength={10}
-              />
-            </Field>
-            <Field label="Telefone" error={errors.telephone}>
-              <TextInput
-                style={inputStyle('telephone')}
-                placeholder="(00) 00000-0000"
-                placeholderTextColor={PLACEHOLDER}
-                value={telephone}
-                onChangeText={(t) => { setTelephone(maskTelephone(t)); if (errors.telephone) setErrors(p => ({ ...p, telephone: '' })); }}
-                keyboardType="phone-pad"
-                maxLength={15}
-              />
-            </Field>
-          </View>
-
-          <Field label="E-mail" error={errors.email}>
-            <TextInput
-              style={inputStyle('email')}
-              placeholder="seuemail@exemplo.com"
-              placeholderTextColor={PLACEHOLDER}
-              value={email}
-              onChangeText={(t) => { setEmail(t); if (errors.email) setErrors(p => ({ ...p, email: '' })); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
+            <CustomInput
+              label="Nome"
+              value={firstName}
+              onChangeText={(t) => { setFirstName(maskName(t)); if (errors.firstName) setErrors(p => ({ ...p, firstName: '' })); }}
+              placeholder="Seu nome"
+              autoCapitalize="words"
+              error={errors.firstName}
+              style={styles.field}
             />
-          </Field>
+            <CustomInput
+              label="Sobrenome"
+              value={lastName}
+              onChangeText={(t) => { setLastName(maskName(t)); if (errors.lastName) setErrors(p => ({ ...p, lastName: '' })); }}
+              placeholder="Seu sobrenome"
+              autoCapitalize="words"
+              error={errors.lastName}
+              style={styles.field}
+            />
+          </View>
 
-          <Field label="País" error={errors.country}>
+          <View style={styles.row}>
+            <CustomInput
+              label="Data de nascimento"
+              type="numeric"
+              value={birthDate}
+              onChangeText={(t) => { setBirthDate(maskBirthDate(t)); if (errors.birthDate) setErrors(p => ({ ...p, birthDate: '' })); }}
+              placeholder="DD/MM/AAAA"
+              maxLength={10}
+              error={errors.birthDate}
+              style={styles.field}
+            />
+            <CustomInput
+              label="Telefone"
+              type="phone-pad"
+              value={telephone}
+              onChangeText={(t) => { setTelephone(maskTelephone(t)); if (errors.telephone) setErrors(p => ({ ...p, telephone: '' })); }}
+              placeholder="(00) 00000-0000"
+              maxLength={15}
+              error={errors.telephone}
+              style={styles.field}
+            />
+          </View>
+
+          <CustomInput
+            label="E-mail"
+            type="email"
+            value={email}
+            onChangeText={(t) => { setEmail(t); if (errors.email) setErrors(p => ({ ...p, email: '' })); }}
+            placeholder="seuemail@exemplo.com"
+            autoCapitalize="none"
+            error={errors.email}
+          />
+
+          <View style={styles.field}>
+            <Text style={styles.label}>País</Text>
             <TouchableOpacity
               style={[styles.dropdownTrigger, errors.country ? styles.inputError : null]}
               onPress={() => setShowCountries(true)}
@@ -162,7 +162,8 @@ export default function ProfileScreen() {
               </Text>
               <Text style={styles.dropdownChevron}>▼</Text>
             </TouchableOpacity>
-          </Field>
+            {errors.country ? <Text style={styles.errorText}>{errors.country}</Text> : null}
+          </View>
 
           {/* Modal do país — fora do card, sem problema de overflow */}
           <Modal
@@ -201,19 +202,17 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
           </Modal>
+          <TouchableOpacity style={[styles.saveButton, {marginTop: 15}]} onPress={handleUpdate} disabled={loading} activeOpacity={0.85}>
+            {loading
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.saveButtonText}>Salvar alterações</Text>
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.7}>
+            <Text style={styles.logoutText}>Sair da conta</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.saveButton} onPress={handleUpdate} disabled={loading} activeOpacity={0.85}>
-          {loading
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={styles.saveButtonText}>Salvar alterações</Text>
-          }
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.7}>
-          <Text style={styles.logoutText}>Sair da conta</Text>
-        </TouchableOpacity>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -222,18 +221,29 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f4f6f9' },
   loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f4f6f9' },
-  content: { padding: 24, paddingBottom: 48 },
+  content: { flexGrow: 1, paddingTop: 24 },
   avatarSection: { alignItems: 'center', marginBottom: 28 },
   avatarCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center', marginBottom: 12, shadowColor: PRIMARY, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
   avatarEmoji: { fontSize: 40 },
   avatarName: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
   avatarEmail: { fontSize: 13, color: '#6b7280' },
   sectionTitle: { fontSize: 11, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  card: { 
+    flex: 1, 
+    backgroundColor: '#fff', 
+    borderTopLeftRadius: 32, 
+    borderTopRightRadius: 32, 
+    padding: 24, 
+    paddingBottom: 40,
+    shadowColor: '#000', 
+    shadowOpacity: 0.06, 
+    shadowRadius: 10, 
+    shadowOffset: { width: 0, height: 3 }, 
+    elevation: 3 
+  },
   row: { flexDirection: 'row', gap: 12 },
   field: { flex: 1, marginBottom: 16 },
   label: { fontSize: 12, fontWeight: '700', color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11, fontSize: 15, color: '#1a1a1a' },
   inputError: { borderColor: '#EF4444' },
   errorText: { color: '#EF4444', fontSize: 11, marginTop: 4, marginLeft: 2 },
   //dropdownWrapper: { position: 'relative', zIndex: 10 },
@@ -298,4 +308,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  headerWrapper: { paddingHorizontal: 24, backgroundColor: PRIMARY },
+  headerRow: { flexDirection: 'row', alignItems: 'center', position: 'relative', height: 56 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  headerBackBtn: { paddingVertical: 4, paddingRight: 8, marginLeft: -12 },
+  headerText: { fontSize: 18, fontWeight: '700', color: 'white' },
+  headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
 });

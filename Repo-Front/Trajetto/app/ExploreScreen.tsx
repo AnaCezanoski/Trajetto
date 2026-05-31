@@ -2,25 +2,28 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  ActivityIndicator, StyleSheet, SafeAreaView, Modal,
+  ActivityIndicator, StyleSheet, Modal,
   ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import CustomInput from '../components/CustomInput';
+import { Ionicons } from '@expo/vector-icons';
 import { Place, placesService } from '../services/placesService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 function categoryIcon(category: string): string {
   const c = category.toLowerCase();
-  if (c.includes('museum'))    return '🏛️';
-  if (c.includes('monument'))  return '🗿';
-  if (c.includes('castle'))    return '🏰';
-  if (c.includes('church'))    return '⛪';
-  if (c.includes('park'))      return '🌳';
-  if (c.includes('square'))    return '🏙️';
-  if (c.includes('fountain'))  return '⛲';
-  if (c.includes('ruins'))     return '🏚️';
-  if (c.includes('art'))       return '🎨';
-  if (c.includes('view'))      return '🌄';
+  if (c.includes('museum')) return '🏛️';
+  if (c.includes('monument')) return '🗿';
+  if (c.includes('castle')) return '🏰';
+  if (c.includes('church')) return '⛪';
+  if (c.includes('park')) return '🌳';
+  if (c.includes('square')) return '🏙️';
+  if (c.includes('fountain')) return '⛲';
+  if (c.includes('ruins')) return '🏚️';
+  if (c.includes('art')) return '🎨';
+  if (c.includes('view')) return '🌄';
   return '📍';
 }
 
@@ -43,20 +46,20 @@ function SpotCard({ spot, onPress }: { spot: Place; onPress: () => void }) {
 export default function ExploreScreen() {
   const router = useRouter();
 
-  const [spots, setSpots]               = useState<Place[]>([]);
-  const [categories, setCategories]     = useState<string[]>([]);
-  const [loading, setLoading]           = useState(false);
-  const [search, setSearch]             = useState('');
+  const [spots, setSpots] = useState<Place[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [showFilter, setShowFilter]     = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
   const [tempCategory, setTempCategory] = useState('');
-  const [searched, setSearched]         = useState(false);
+  const [searched, setSearched] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Carrega categorias ao montar
   useEffect(() => {
-    placesService.getCategories().then(setCategories).catch(() => {});
+    placesService.getCategories().then(setCategories).catch(() => { });
     fetchSpots('', '');
   }, []);
 
@@ -103,10 +106,21 @@ export default function ExploreScreen() {
   };
 
   const activeFilters = [selectedCategory].filter(Boolean).length;
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={styles.safe}>
+      <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={32} color={'white'} />
+            </TouchableOpacity>
+            <Text style={styles.headerText}>Explorar</Text>
+          </View>
+        </View>
+      </View>
+      <KeyboardAvoidingView style={[styles.container]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
         {/* Header */}
         <View style={styles.header}>
@@ -116,21 +130,22 @@ export default function ExploreScreen() {
 
         {/* Search + Filter */}
         <View style={styles.searchRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="🔍  Buscar ponto turístico..."
-            placeholderTextColor="#9CA3AF"
+          <CustomInput
+            placeholder="Buscar ponto turístico..."
             value={search}
             onChangeText={handleSearchChange}
             returnKeyType="search"
             autoCorrect={false}
+            style={{ flex: 1, marginBottom: 0 }}
+            inputWrapperStyle={{ backgroundColor: '#fff' }}
+            leftIcon={<Ionicons name="search" size={20} color="#9CA3AF" />}
           />
           <TouchableOpacity
             style={[styles.filterBtn, activeFilters > 0 && styles.filterBtnActive]}
             onPress={() => { setTempCategory(selectedCategory); setShowFilter(true); }}
             activeOpacity={0.8}
           >
-            <Text style={styles.filterIcon}>⚙️</Text>
+            <Ionicons name="filter" size={20} color={activeFilters > 0 ? PRIMARY : "#9CA3AF"} />
             {activeFilters > 0 && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilters}</Text>
@@ -246,13 +261,13 @@ export default function ExploreScreen() {
         </TouchableOpacity>
       </Modal>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
-  container: { flex: 1, paddingHorizontal: 16 },
+  safe: { flex: 1, backgroundColor: '#f4f6f9' },
+  container: { flex: 1, paddingHorizontal: 16, backgroundColor: '#f4f6f9' },
 
   header: { paddingTop: 24, paddingBottom: 8 },
   headerTitle: { fontSize: 28, fontWeight: '700', color: '#111827' },
@@ -348,4 +363,11 @@ const styles = StyleSheet.create({
   clearFilterBtnText: { color: '#6B7280', fontWeight: '600', fontSize: 15 },
   applyBtn: { flex: 2, backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   applyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  headerWrapper: { paddingHorizontal: 24, backgroundColor: PRIMARY },
+  headerRow: { flexDirection: 'row', alignItems: 'center', position: 'relative', height: 56 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  headerBackBtn: { paddingVertical: 4, paddingRight: 8, marginLeft: -12 },
+  headerText: { fontSize: 18, fontWeight: '700', color: 'white' },
+  headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+
 });

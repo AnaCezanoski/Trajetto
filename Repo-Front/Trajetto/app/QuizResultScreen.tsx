@@ -86,7 +86,7 @@ export default function QuizResultScreen() {
   );
 }
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },

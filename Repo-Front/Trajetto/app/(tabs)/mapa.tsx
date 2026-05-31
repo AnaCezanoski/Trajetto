@@ -4,7 +4,8 @@ import { useItineraryStore } from '@/hooks/itineraryStore';
 import { RouteService } from '@/services/routeService';
 import { placesService, Place, PlacesFilter } from '@/services/placesService';
 import { isPlacePast } from '@/app/utils/isPlacePast';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import CustomInput from '@/components/CustomInput';
 import polyline from '@mapbox/polyline';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
@@ -19,7 +20,7 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 type LatLng = { latitude: number; longitude: number };
 type Region = LatLng & { latitudeDelta: number; longitudeDelta: number };
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 // Haversine no frontend para mostrar distância no card
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -490,34 +491,40 @@ const Mapa = () => {
 
       {/* ─── Search Bar ─── */}
       <View style={styles.searchWrapper}>
-        <View style={styles.searchBar}>
-          {searchLoading
-            ? <ActivityIndicator size="small" color={PRIMARY} />
-            : <Text style={styles.searchIcon}>🔍</Text>
+        <CustomInput
+          placeholder="Buscar ponto turístico..."
+          value={search}
+          onChangeText={handleSearchChange}
+          returnKeyType="search"
+          autoCorrect={false}
+          style={{ marginBottom: 0 }}
+          inputWrapperStyle={styles.searchBar}
+          inputStyle={styles.searchInput}
+          leftIcon={
+            searchLoading ? (
+              <ActivityIndicator size="small" color={PRIMARY} />
+            ) : (
+              <Ionicons name="search" size={20} color="#9CA3AF" />
+            )
           }
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar ponto turístico..."
-            placeholderTextColor="#9CA3AF"
-            value={search}
-            onChangeText={handleSearchChange}
-            returnKeyType="search"
-            autoCorrect={false}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={handleClearSearch} style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>✕</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={openFilter} activeOpacity={0.8}>
-            <Text style={styles.filterIcon}>⚙️</Text>
-            {activeCount > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+          rightElement={
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {search.length > 0 && (
+                <TouchableOpacity onPress={handleClearSearch} style={styles.clearBtn}>
+                  <Text style={styles.clearBtnText}>✕</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={openFilter} activeOpacity={0.8}>
+                <Ionicons name="filter" size={20} color={activeCount > 0 ? PRIMARY : "#9CA3AF"} />
+                {activeCount > 0 && (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{activeCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          }
+        />
 
         {/* Barra de trajeto atual */}
         {currentSegIdx >= 0 && firstUpcomingIdx < points.length && (
@@ -724,7 +731,8 @@ const Mapa = () => {
                 <Switch
                   value={tempHasHours}
                   onValueChange={setTempHasHours}
-                  trackColor={{ false: '#E5E7EB', true: PRIMARY }}
+                  trackColor={{ false: '#D1D5DB', true: PRIMARY }}
+                  ios_backgroundColor="#D1D5DB"
                   thumbColor="#fff"
                 />
               </View>
@@ -788,7 +796,7 @@ const styles = StyleSheet.create({
   searchWrapper: { position: 'absolute', top: 56, left: 16, right: 16, zIndex: 20 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6, gap: 8 },
   searchIcon: { fontSize: 16 },
-  searchInput: { flex: 1, fontSize: 15, color: '#111827' },
+  searchInput: { flex: 1, fontSize: 15, color: '#111827', paddingVertical: -10, },
   clearBtn: { padding: 4 },
   clearBtnText: { fontSize: 14, color: '#9CA3AF', fontWeight: 'bold' },
   filterBtn: { padding: 6, borderRadius: 8, backgroundColor: '#F3F4F6' },

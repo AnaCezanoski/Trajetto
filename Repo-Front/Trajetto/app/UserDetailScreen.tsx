@@ -8,19 +8,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../services/api';
 import { countries } from '../utils/countries';
 
+import CustomInput from '../components/CustomInput';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const PRIMARY = '#023665';
 const PLACEHOLDER = '#9ca3af';
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
 export default function UserDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { user: userParam } = useLocalSearchParams();
   const user = JSON.parse(userParam as string);
   const router = useRouter();
@@ -62,6 +57,8 @@ export default function UserDetailScreen() {
       <ScrollView style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
         {/* Avatar */}
+
+
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarEmoji}>👤</Text>
@@ -74,35 +71,61 @@ export default function UserDetailScreen() {
         <Text style={styles.sectionTitle}>Informações pessoais</Text>
         <View style={styles.card}>
           <View style={styles.row}>
-            <Field label="Nome">
-              <TextInput style={styles.input} placeholder="Nome" placeholderTextColor={PLACEHOLDER} value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-            </Field>
-            <Field label="Sobrenome">
-              <TextInput style={styles.input} placeholder="Sobrenome" placeholderTextColor={PLACEHOLDER} value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-            </Field>
+            <CustomInput
+              label="Nome"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="Nome"
+              autoCapitalize="words"
+              style={styles.field}
+            />
+            <CustomInput
+              label="Sobrenome"
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Sobrenome"
+              autoCapitalize="words"
+              style={styles.field}
+            />
           </View>
 
           <View style={styles.row}>
-            <Field label="Data de nascimento">
-              <TextInput style={styles.input} placeholder="AAAA-MM-DD" placeholderTextColor={PLACEHOLDER} value={birthDate} onChangeText={setBirthDate} keyboardType="numeric" />
-            </Field>
-            <Field label="Telefone">
-              <TextInput style={styles.input} placeholder="Telefone" placeholderTextColor={PLACEHOLDER} value={telephone} onChangeText={setTelephone} keyboardType="phone-pad" />
-            </Field>
+            <CustomInput
+              label="Data de nascimento"
+              type="numeric"
+              value={birthDate}
+              onChangeText={setBirthDate}
+              placeholder="AAAA-MM-DD"
+              style={styles.field}
+            />
+            <CustomInput
+              label="Telefone"
+              type="phone-pad"
+              value={telephone}
+              onChangeText={setTelephone}
+              placeholder="Telefone"
+              style={styles.field}
+            />
           </View>
 
-          <Field label="E-mail">
-            <TextInput style={styles.input} placeholder="E-mail" placeholderTextColor={PLACEHOLDER} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-          </Field>
+          <CustomInput
+            label="E-mail"
+            type="email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="E-mail"
+            autoCapitalize="none"
+          />
 
-          <Field label="País">
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>País</Text>
             <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowCountries(true)} activeOpacity={0.7}>
               <Text style={country ? styles.dropdownValue : styles.dropdownPlaceholder}>
                 {country || 'Selecione o país'}
               </Text>
               <Text style={styles.dropdownChevron}>▼</Text>
             </TouchableOpacity>
-          </Field>
+          </View>
         </View>
 
         {/* Cargo */}
@@ -115,7 +138,7 @@ export default function UserDetailScreen() {
             <TouchableOpacity
               style={[styles.roleBtn, !isAdmin && styles.roleBtnActive]}
               onPress={() => handleRoleChange(false)}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
               <Text style={[styles.roleBtnText, !isAdmin && styles.roleBtnTextActive]}>👤 Usuário</Text>
             </TouchableOpacity>
@@ -183,19 +206,13 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 20,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 }, elevation: 3,
+    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
   row: { flexDirection: 'row', gap: 12 },
   field: { flex: 1, marginBottom: 16 },
   fieldLabel: {
     fontSize: 12, fontWeight: '700', color: '#6b7280',
     marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0',
-    borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11,
-    fontSize: 15, color: '#1a1a1a',
   },
   dropdownTrigger: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -243,4 +260,10 @@ const styles = StyleSheet.create({
   modalItemText: { fontSize: 15, color: '#1a1a1a' },
   modalItemSelected: { color: PRIMARY, fontWeight: '700' },
   checkmark: { color: PRIMARY, fontSize: 16, fontWeight: 'bold' },
+  headerWrapper: { paddingHorizontal: 24, backgroundColor: PRIMARY },
+  headerRow: { flexDirection: 'row', alignItems: 'center', position: 'relative', height: 56 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  headerBackBtn: { paddingVertical: 4, paddingRight: 8, marginLeft: -12 },
+  headerText: { fontSize: 18, fontWeight: '700', color: 'white' },
+  headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
 });

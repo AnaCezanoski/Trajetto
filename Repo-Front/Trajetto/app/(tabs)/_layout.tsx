@@ -1,11 +1,11 @@
 import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 const ACTIVE_TINT = '#ffffff';
 const INACTIVE_TINT = 'rgba(255,255,255,0.45)';
 
@@ -28,8 +28,8 @@ export default function TabLayout() {
           shadowOpacity: 0.2,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: -2 },
-          height: Platform.OS === 'ios' ? 84 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === 'ios' ? 84 : 80,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 16,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -44,7 +44,7 @@ export default function TabLayout() {
         options={{
           title: 'Início',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="calendar" color={color} />
+            <Ionicons size={24} name="calendar-outline" color={color} />
           ),
         }}
       />
@@ -54,7 +54,7 @@ export default function TabLayout() {
         options={{
           title: 'Mapa',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="map.fill" color={color} />
+            <Ionicons size={24} name="map-outline" color={color} />
           ),
         }}
       />
@@ -64,7 +64,7 @@ export default function TabLayout() {
         options={{
           title: 'Trajetto',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="mappin.and.ellipse" color={color} />
+            <Ionicons size={24} name="location-outline" color={color} />
           ),
         }}
       />

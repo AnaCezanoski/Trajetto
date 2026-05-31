@@ -4,13 +4,14 @@ import {
   Dimensions, Linking, ScrollView, StyleSheet,
   Text, TouchableOpacity, View, Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Place } from '../services/placesService';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -86,12 +87,14 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function InfoRow({ icon, label, value, onPress }: {
-  icon: string; label: string; value: string; onPress?: () => void;
+  icon: React.ReactNode; label: string; value: string; onPress?: () => void;
 }) {
   if (!value) return null;
   return (
     <TouchableOpacity style={styles.infoRow} onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.7 : 1}>
-      <Text style={styles.infoIcon}>{icon}</Text>
+      <View style={styles.infoIconContainer}>
+        {typeof icon === 'string' ? <Text style={styles.infoIconText}>{icon}</Text> : icon}
+      </View>
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={[styles.infoValue, onPress && styles.infoLink]}>{value}</Text>
@@ -104,6 +107,7 @@ function InfoRow({ icon, label, value, onPress }: {
 // ─── Tela principal ──────────────────────────────────────
 
 export default function SpotDetailScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ spot: string }>();
   const spot: Place = JSON.parse(params.spot);
@@ -151,7 +155,17 @@ export default function SpotDetailScreen() {
   const wc    = wheelchairLabel(spot.wheelchair || '');
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
+      <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={32} color={'white'} />
+            </TouchableOpacity>
+            <Text style={styles.headerText}>Explorar</Text>
+          </View>
+        </View>
+      </View>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
         {/* Mapa interativo */}
@@ -174,7 +188,7 @@ export default function SpotDetailScreen() {
           <View style={styles.iconWrapper}>
             <Text style={styles.iconText}>{categoryIcon(spot.category)}</Text>
           </View>
-          <View style={styles.headerText}>
+          <View style={styles.titleText}>
             <Text style={styles.name}>{spot.name}</Text>
             <View style={styles.badgeRow}>
               <View style={styles.badge}>
@@ -206,25 +220,28 @@ export default function SpotDetailScreen() {
             <View style={styles.card}>
               <View style={styles.distanceRow}>
                 <View style={styles.distanceCard}>
-                  <Text style={styles.distanceIcon}>📏</Text>
+                  <Ionicons name="navigate-outline" size={24} color="#6B7280" />
                   <Text style={styles.distanceValue}>{formatDistance(distance)}</Text>
                   <Text style={styles.distanceLabel}>distância</Text>
                 </View>
                 <View style={styles.distanceDivider} />
                 <View style={styles.distanceCard}>
-                  <Text style={styles.distanceIcon}>🚶</Text>
+                  <Ionicons name="walk-outline" size={24} color="#6B7280" />
                   <Text style={styles.distanceValue}>{formatWalk(distance)}</Text>
                   <Text style={styles.distanceLabel}>a pé</Text>
                 </View>
                 <View style={styles.distanceDivider} />
                 <View style={styles.distanceCard}>
-                  <Text style={styles.distanceIcon}>🚗</Text>
+                  <Ionicons name="car-outline" size={24} color="#6B7280" />
                   <Text style={styles.distanceValue}>{formatCar(distance)}</Text>
                   <Text style={styles.distanceLabel}>de carro</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.mapsBtn} onPress={openMaps} activeOpacity={0.85}>
-                <Text style={styles.mapsBtnText}>🗺️  Abrir rota no Google Maps</Text>
+                <View style={styles.mapsBtnContent}>
+                  <Ionicons name="map-outline" size={20} color="white" />
+                  <Text style={styles.mapsBtnText}>Abrir rota no Google Maps</Text>
+                </View>
               </TouchableOpacity>
             </View>
           </>
@@ -233,12 +250,12 @@ export default function SpotDetailScreen() {
         {/* ─── Informações gerais ─── */}
         <SectionTitle>Informações</SectionTitle>
         <View style={styles.card}>
-          <InfoRow icon="📍" label="Endereço"  value={spot.address} />
-          <InfoRow icon="🌐" label="Website"   value={spot.website || ''} onPress={spot.website ? openWebsite : undefined} />
-          <InfoRow icon="📞" label="Telefone"  value={spot.phone || ''}   onPress={spot.phone   ? callPhone   : undefined} />
-          <InfoRow icon="🌍" label="Wikipedia" value={spot.wikipedia || ''} onPress={spot.wikipedia ? openWikipedia : undefined} />
-          <InfoRow icon="📌" label="Wikidata"  value={spot.wikidata || ''} />
-          <InfoRow icon="🗺️" label="Coordenadas" value={`${spot.latitude.toFixed(5)}, ${spot.longitude.toFixed(5)}`} />
+          <InfoRow icon={<Ionicons name="location-outline" size={20} color="#9CA3AF" />} label="Endereço"  value={spot.address} />
+          <InfoRow icon={<Ionicons name="globe-outline" size={20} color="#9CA3AF" />} label="Website"   value={spot.website || ''} onPress={spot.website ? openWebsite : undefined} />
+          <InfoRow icon={<Ionicons name="call-outline" size={20} color="#9CA3AF" />} label="Telefone"  value={spot.phone || ''}   onPress={spot.phone   ? callPhone   : undefined} />
+          <InfoRow icon={<Ionicons name="earth-outline" size={20} color="#9CA3AF" />} label="Wikipedia" value={spot.wikipedia || ''} onPress={spot.wikipedia ? openWikipedia : undefined} />
+          <InfoRow icon={<Ionicons name="pin-outline" size={20} color="#9CA3AF" />} label="Wikidata"  value={spot.wikidata || ''} />
+          <InfoRow icon={<Ionicons name="map-outline" size={20} color="#9CA3AF" />} label="Coordenadas" value={`${spot.latitude.toFixed(5)}, ${spot.longitude.toFixed(5)}`} />
         </View>
 
         {/* ─── Horários ─── */}
@@ -270,12 +287,8 @@ export default function SpotDetailScreen() {
           </>
         )}
 
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>← Voltar</Text>
-        </TouchableOpacity>
-
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -288,7 +301,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', padding: 20, gap: 14, alignItems: 'flex-start' },
   iconWrapper: { width: 60, height: 60, borderRadius: 16, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   iconText: { fontSize: 30 },
-  headerText: { flex: 1 },
+  titleText: { flex: 1 },
   name: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 8, lineHeight: 26 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   badge: { backgroundColor: '#EEF2FF', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
@@ -313,7 +326,6 @@ const styles = StyleSheet.create({
   // Distância
   distanceRow: { flexDirection: 'row', padding: 16 },
   distanceCard: { flex: 1, alignItems: 'center', gap: 4 },
-  distanceIcon: { fontSize: 24 },
   distanceValue: { fontSize: 15, fontWeight: '700', color: '#111827' },
   distanceLabel: { fontSize: 11, color: '#6B7280' },
   distanceDivider: { width: 1, height: 48, backgroundColor: '#F3F4F6', alignSelf: 'center' },
@@ -321,6 +333,11 @@ const styles = StyleSheet.create({
     margin: 12, marginTop: 0,
     backgroundColor: PRIMARY, borderRadius: 12,
     paddingVertical: 12, alignItems: 'center',
+  },
+  mapsBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   mapsBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
@@ -330,7 +347,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 13,
     borderBottomWidth: 1, borderBottomColor: '#F3F4F6', gap: 12,
   },
-  infoIcon: { fontSize: 20, width: 28, textAlign: 'center' },
+  infoIconContainer: { width: 28, alignItems: 'center', justifyContent: 'center' },
+  infoIconText: { fontSize: 20 },
   infoContent: { flex: 1 },
   infoLabel: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 },
   infoValue: { fontSize: 14, color: '#111827', fontWeight: '500' },
@@ -354,4 +372,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', backgroundColor: '#fff',
   },
   backButtonText: { color: '#6B7280', fontSize: 15, fontWeight: '500' },
+  headerWrapper: { paddingHorizontal: 24, backgroundColor: PRIMARY },
+  headerRow: { flexDirection: 'row', alignItems: 'center', position: 'relative', height: 56 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  headerBackBtn: { paddingVertical: 4, paddingRight: 8, marginLeft: -12 },
+  headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+  headerText: { fontSize: 18, fontWeight: '700', color: 'white' },
 });

@@ -21,6 +21,7 @@ export function ThemedText({
     <Text
       style={[
         { color },
+        { fontFamily: 'Inter' },
         type === 'default' ? styles.default : undefined,
         type === 'title' ? styles.title : undefined,
         type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
@@ -37,20 +38,21 @@ const styles = StyleSheet.create({
   default: {
     fontSize: 16,
     lineHeight: 24,
+    fontFamily: 'Inter',
   },
   defaultSemiBold: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: '600',
+    fontFamily: 'Inter-Medium',
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: 'Inter-Bold',
     lineHeight: 32,
   },
   subtitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Inter-Bold',
   },
   link: {
     lineHeight: 30,

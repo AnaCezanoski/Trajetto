@@ -10,209 +10,126 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
+  ImageSourcePropType,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
+import { Platform } from 'react-native';
+import CustomButton from '../../components/CustomButton';
 
-function DateSection({ itinerary }: { itinerary: Itinerary }) {
-  const updateDate = useItineraryStore(s => s.updateDate);
-  const [dateText, setDateText] = useState(itinerary.date ?? '');
-  const [saving, setSaving] = useState(false);
-  const changed = dateText !== (itinerary.date ?? '');
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateDate(itinerary.id, dateText.trim() || null);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar.');
-    } finally {
-      setSaving(false);
-    }
-  };
+const PRIMARY = '#006ecf';
+
+
+const DESTINATIONS = [
+  {
+    title: 'Tokyo',
+    subtitle: 'Japão',
+    time: '14h voo',
+    image: require('@/assets/appImgs/tokyoImg.jpg'),
+    bgColor: '#1a1a1a',
+  },
+  {
+    title: 'Paris',
+    subtitle: 'França',
+    time: '11h voo',
+    image: require('@/assets/appImgs/parisImg.jpg'),
+    bgColor: '#e85d9b',
+  },
+  {
+    title: 'NYC',
+    subtitle: 'EUA',
+    time: '9h voo',
+    image: require('@/assets/appImgs/nycImg.jpg'),
+    bgColor: '#3b82f6',
+  },
+
+  {
+    title: 'Roma',
+    subtitle: 'Itália',
+    time: '12h voo',
+    image: require('@/assets/appImgs/romeImg.jpg'),
+    bgColor: '#c7be40',
+  },
+  {
+    title: 'Veneza',
+    subtitle: 'Itália',
+    time: '12h voo',
+    image: require('@/assets/appImgs/veniceImg.jpg'),
+    bgColor: '#aa88da',
+  },
+
+  {
+    title: 'Curitiba',
+    subtitle: 'Brasil',
+    time: '2h voo',
+    image: require('@/assets/appImgs/jdBotanicoImg.jpg'),
+    bgColor: '#85d363',
+  },
+];
+
+function DestinationCard({
+  title, subtitle, time, image, bgColor, rotation, style, animKey,
+}: {
+  title: string;
+  subtitle: string;
+  time: string;
+  image: ImageSourcePropType;
+  bgColor: string;
+  rotation: string;
+  style?: object;
+  animKey: number;
+}) {
+  const swing = useSharedValue(0);
+
+  useEffect(() => {
+    swing.value = withSequence(
+      withTiming(-8, { duration: 80, easing: Easing.out(Easing.quad) }),
+      withTiming(6, { duration: 80, easing: Easing.out(Easing.quad) }),
+      withTiming(-4, { duration: 70, easing: Easing.out(Easing.quad) }),
+      withTiming(2, { duration: 70, easing: Easing.out(Easing.quad) }),
+      withTiming(0, { duration: 60, easing: Easing.out(Easing.quad) }),
+    );
+  }, [animKey]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: rotation },
+      { rotate: `${swing.value}deg` },
+    ],
+  }));
 
   return (
-    <View style={dateStyles.container}>
-      <Text style={dateStyles.label}>Data</Text>
-      <TextInput
-        style={dateStyles.input}
-        value={dateText}
-        onChangeText={setDateText}
-      />
-      {changed && (
-        <TouchableOpacity
-          style={dateStyles.saveBtn}
-          onPress={handleSave}
-          disabled={saving}
-          activeOpacity={0.8}
-        >
-          {saving
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={dateStyles.saveBtnText}>Salvar</Text>
-          }
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
-
-const dateStyles = StyleSheet.create({
-  container: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f4f8',
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8a9ab0',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e8edf3',
-    borderRadius: 10,
-    padding: 10,
-    fontSize: 13,
-    color: '#1a1a1a',
-    backgroundColor: '#f8fafc',
-  },
-  saveBtn: {
-    marginTop: 8,
-    backgroundColor: '#023665',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-});
-
-function RatingSection({ itinerary }: { itinerary: Itinerary }) {
-  const rateItinerary = useItineraryStore(s => s.rateItinerary);
-  const [desc, setDesc] = useState(itinerary.ratingDescription ?? '');
-  const [savingRating, setSavingRating] = useState(false);
-  const [savingDesc, setSavingDesc] = useState(false);
-  const currentRating = itinerary.rating ?? 0;
-  const descChanged = desc !== (itinerary.ratingDescription ?? '');
-
-  const handleStarPress = async (star: number) => {
-    const newRating = currentRating === star ? 0 : star;
-    setSavingRating(true);
-    try {
-      await rateItinerary(itinerary.id, newRating, itinerary.ratingDescription ?? null);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar a avaliação.');
-    } finally {
-      setSavingRating(false);
-    }
-  };
-
-  const handleSaveDesc = async () => {
-    setSavingDesc(true);
-    try {
-      await rateItinerary(itinerary.id, itinerary.rating ?? null, desc || null);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar o comentário.');
-    } finally {
-      setSavingDesc(false);
-    }
-  };
-
-  return (
-    <View style={ratingStyles.container}>
-      <View style={ratingStyles.starsRow}>
-        <Text style={ratingStyles.label}>Avaliação</Text>
-        {savingRating ? (
-          <ActivityIndicator size="small" color="#f59e0b" />
-        ) : (
-          <View style={ratingStyles.stars}>
-            {[1, 2, 3, 4, 5].map(star => (
-              <TouchableOpacity key={star} onPress={() => handleStarPress(star)} activeOpacity={0.7}>
-                <Text style={star <= currentRating ? ratingStyles.starFilled : ratingStyles.starEmpty}>
-                  {star <= currentRating ? '★' : '☆'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+    <Animated.View style={[cardStyles.card, { backgroundColor: bgColor, transform: [{ rotate: rotation }] }, style, animStyle]}>
+      <View style={cardStyles.cardTop}>
+        <Text style={cardStyles.cardTitle}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+        >{title}</Text>
+        <View style={cardStyles.timeBadge}>
+          <Text style={cardStyles.timeText}
+            adjustsFontSizeToFit
+            numberOfLines={1}
+          >{time}</Text>
+        </View>
       </View>
-      <TextInput
-        style={ratingStyles.descInput}
-        placeholder="Comentário sobre o roteiro..."
-        placeholderTextColor="#b0bec5"
-        value={desc}
-        onChangeText={setDesc}
-        multiline
-        numberOfLines={2}
-      />
-      {descChanged && (
-        <TouchableOpacity
-          style={ratingStyles.saveBtn}
-          onPress={handleSaveDesc}
-          disabled={savingDesc}
-          activeOpacity={0.8}
-        >
-          {savingDesc
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={ratingStyles.saveBtnText}>Salvar comentário</Text>
-          }
-        </TouchableOpacity>
-      )}
-    </View>
+      <Text style={cardStyles.cardSubtitle}>{subtitle}</Text>
+      <Image source={image} style={cardStyles.cardImage} />
+    </Animated.View>
   );
 }
 
-const ratingStyles = StyleSheet.create({
-  container: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f4f8',
-  },
-  starsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8a9ab0',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  stars: { flexDirection: 'row', gap: 4 },
-  starFilled: { fontSize: 24, color: '#f59e0b' },
-  starEmpty: { fontSize: 24, color: '#d1d5db' },
-  descInput: {
-    borderWidth: 1,
-    borderColor: '#e8edf3',
-    borderRadius: 10,
-    padding: 10,
-    fontSize: 13,
-    color: '#1a1a1a',
-    backgroundColor: '#f8fafc',
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  saveBtn: {
-    marginTop: 8,
-    backgroundColor: '#023665',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-});
-
-
-const PRIMARY = '#023665';
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
@@ -223,6 +140,8 @@ const formatDate = (dateStr: string) => {
 const formatTime = (time: string) => time?.slice(0, 5) ?? '';
 
 export default function RoteirosTab() {
+  const [destIndex, setDestIndex] = useState(0);
+
   const { user } = useAuth();
   const router = useRouter();
   const { itinerary, itineraries, loading, fetchAllItineraries, deleteItinerary, activateItinerary } = useItineraryStore();
@@ -232,6 +151,13 @@ export default function RoteirosTab() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDestIndex(prev => (prev + 1) % DESTINATIONS.length);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -334,9 +260,10 @@ export default function RoteirosTab() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
+        
         {selectMode ? (
           <>
             <TouchableOpacity onPress={exitSelectMode} activeOpacity={0.8}>
@@ -360,7 +287,7 @@ export default function RoteirosTab() {
               onPress={() => router.push('/perfil')}
               activeOpacity={0.8}
             >
-              <Text style={styles.avatarBtnText}>👤</Text>
+              <Ionicons name="person" size={24} color="white" />
             </TouchableOpacity>
           </>
         )}
@@ -390,6 +317,32 @@ export default function RoteirosTab() {
           </View>
         ) : itinerary ? (
           <>
+          {!selectMode && (
+  <TouchableOpacity
+    style={styles.exploreBanner}
+    onPress={() => router.push('/ExploreScreen')} // ← troque pela rota que quiser
+    activeOpacity={0.92}
+  >
+    {/* Imagem de fundo via URL pública de praia */}
+    <Image
+      source={{ uri: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80' }}
+      style={StyleSheet.absoluteFillObject}
+      resizeMode="cover"
+    />
+    {/* Gradiente escuro para legibilidade */}
+    <View style={styles.exploreBannerOverlay} />
+
+    <View style={styles.exploreBannerContent}>
+      <View style={styles.exploreBannerTag}>
+        <Text style={styles.exploreBannerTagText}>✈️  Destinos</Text>
+      </View>
+      <Text style={styles.exploreBannerTitle}>Explore mais{'\n'}lugares para ir</Text>
+      <View style={styles.exploreBannerBtn}>
+        <Text style={styles.exploreBannerBtnText}>Descobrir agora →</Text>
+      </View>
+    </View>
+  </TouchableOpacity>
+)}
             <Text style={styles.sectionLabel}>ROTEIRO ATIVO</Text>
 
             <TouchableOpacity
@@ -414,8 +367,9 @@ export default function RoteirosTab() {
               </View>
 
               <View style={styles.titleRow}>
+                <Ionicons name="location" size={18} color={PRIMARY} style={{ marginBottom: 5 }} />
                 <Text style={[styles.itineraryCardTitle, { flex: 1 }]} numberOfLines={1}>
-                  📍 {itinerary.places[0]?.name ?? 'Roteiro'}
+                  {itinerary.places[0]?.name ?? 'Roteiro'}
                 </Text>
                 {!selectMode && <Text style={styles.chevron}>›</Text>}
               </View>
@@ -424,7 +378,7 @@ export default function RoteirosTab() {
                 {itinerary.places.length} paradas ·{' '}
                 {Math.ceil(
                   (new Date(itinerary.endDate).getTime() - new Date(itinerary.startDate).getTime()) /
-                    (1000 * 60 * 60 * 24)
+                  (1000 * 60 * 60 * 24)
                 ) + 1}{' '}
                 dias
               </Text>
@@ -452,27 +406,28 @@ export default function RoteirosTab() {
                     })}
                 </View>
               )}
-              {!selectMode && <DateSection itinerary={itinerary} />}
-              {!selectMode && <RatingSection itinerary={itinerary} />}
+
+              {!selectMode && <View style={styles.divider} />}
+              {!selectMode && (
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(itinerary.id)}
+                  disabled={deleting === itinerary.id}
+                  activeOpacity={0.8}
+                >
+                  {deleting === itinerary.id ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <>
+                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      <Text style={styles.deleteBtnText}>Excluir roteiro</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
 
-            {!selectMode && (
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(itinerary.id)}
-                disabled={deleting === itinerary.id}
-                activeOpacity={0.8}
-              >
-                {deleting === itinerary.id ? (
-                  <ActivityIndicator size="small" color="#EF4444" />
-                ) : (
-                  <>
-                    <Text style={styles.deleteBtnIcon}>🗑️</Text>
-                    <Text style={styles.deleteBtnText}>Excluir roteiro</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+
 
             {/* Outros roteiros */}
             {itineraries.filter(i => !i.active).length > 0 && (
@@ -491,9 +446,11 @@ export default function RoteirosTab() {
                     >
                       {selectMode && <Checkbox id={item.id} />}
                       <View style={styles.inactiveCardInfo}>
-                        <Text style={styles.inactiveCardTitle} numberOfLines={1}>
-                          📍 {item.places[0]?.name ?? 'Roteiro'}
-                        </Text>
+                        <View style={{ flexDirection: 'row' }}>
+                          <Ionicons name="location" size={18} color={PRIMARY} />
+                          <Text style={styles.inactiveCardTitle} numberOfLines={1}> {item.places[0]?.name ?? 'Roteiro'}
+                          </Text>
+                        </View>
                         <Text style={styles.inactiveCardMeta}>
                           {item.places.length} paradas · {formatDate(item.startDate)}
                         </Text>
@@ -501,7 +458,7 @@ export default function RoteirosTab() {
                       {!selectMode && (
                         <>
                           <TouchableOpacity
-                            style={styles.activateBtn}
+                            style={[styles.activateBtn, { marginLeft: 15 }]}
                             onPress={() => handleActivate(item.id)}
                             disabled={activating === item.id}
                             activeOpacity={0.8}
@@ -519,40 +476,83 @@ export default function RoteirosTab() {
                           >
                             {deleting === item.id
                               ? <ActivityIndicator size="small" color="#EF4444" />
-                              : <Text style={styles.inactiveDeleteIcon}>🗑️</Text>
+                              : <Ionicons name="trash-outline" size={18} color="#EF4444" />
                             }
                           </TouchableOpacity>
                         </>
                       )}
                     </TouchableOpacity>
-                    {!selectMode && <DateSection itinerary={item} />}
-                    {!selectMode && <RatingSection itinerary={item} />}
                   </View>
                 ))}
               </>
             )}
           </>
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🗺️</Text>
-            <Text style={styles.emptyTitle}>Nenhum roteiro ainda</Text>
-            <Text style={styles.emptyDesc}>
-              Crie seu primeiro roteiro personalizado e comece a explorar o mundo.
-            </Text>
+          <View style={{ flex: 1, flexDirection: 'column', gap: 50 }}>
+            <View style={{flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+              
+              <View style={{ marginTop: 20, flexDirection: 'row', gap: 7, alignItems: 'center' }}>
+                <Text style={[styles.emptyBody, { lineHeight: Platform.OS === 'ios' ? 22 : 30 }]}>Crie seu primeiro</Text>
+                  <Text style={{marginTop: -7,  fontSize: Platform.OS === 'ios' ? 18 : 25, fontFamily: 'FugazOne', color: PRIMARY, alignSelf: 'center', lineHeight: Platform.OS === 'ios' ? 22 : 30 }}>roteiro</Text>
+              </View>
+              
+              <View style={{ marginTop: -10, flexDirection: 'row', gap: 7, alignItems: 'center' }}>
+                <Text style={{marginTop: -7, fontSize: Platform.OS === 'ios' ? 18 : 25, fontFamily: 'FugazOne', color: PRIMARY, alignSelf: 'center', lineHeight: Platform.OS === 'ios' ? 22 : 30 }}>personalizado</Text>
+                <Text style={[styles.emptyBody, { lineHeight: Platform.OS === 'ios' ? 24 : 30 }]}>e comece a</Text>
+              </View>
+
+              <Text style={[styles.emptyBody, {marginTop: -10, lineHeight: Platform.OS === 'ios' ? 24 : 30 }]}>explorar o mundo.</Text>
+
+
+
+            </View>
+            <View style={[styles.emptyState, { backgroundColor: '#fff' }]}>
+              <View style={styles.cardsStack}>
+                <DestinationCard
+                  title={DESTINATIONS[destIndex].title}
+                  subtitle={DESTINATIONS[destIndex].subtitle}
+                  time={DESTINATIONS[destIndex].time}
+                  image={DESTINATIONS[destIndex].image}
+                  bgColor={DESTINATIONS[destIndex].bgColor}
+                  rotation="-6deg"
+                  style={{ position: 'absolute', left: 0, top: 20 }}
+                  animKey={destIndex}
+                />
+                <DestinationCard
+                  title={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].title}
+                  subtitle={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].subtitle}
+                  time={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].time}
+                  image={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].image}
+                  bgColor={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].bgColor}
+                  rotation="4deg"
+                  style={{ position: 'absolute', left: 60, top: 0 }}
+                  animKey={destIndex}
+                />
+                <DestinationCard
+                  title={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].title}
+                  subtitle={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].subtitle}
+                  time={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].time}
+                  image={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].image}
+                  bgColor={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].bgColor}
+                  rotation="-2deg"
+                  style={{ position: 'absolute', left: 120, top: 30 }}
+                  animKey={destIndex}
+                />
+              </View>
+            </View>
           </View>
         )}
 
         {!selectMode && (
-          <View style={[styles.generateSection, !itinerary ? { backgroundColor: '#f4f6f9', flex: 1 } : {}]}>
-            <Text style={styles.generateLabel}>Quer um novo roteiro?</Text>
-            <TouchableOpacity
-              style={styles.generateBtn}
-              activeOpacity={0.85}
+          <View style={[styles.generateSection, !itinerary ? { backgroundColor: '#fff', flex: 1 } : {}]}>
+            {itineraries.length > 0 && itinerary && (
+              <Text style={styles.generateLabel}>Quer um novo roteiro?</Text>
+            )}
+            <CustomButton
+              title="Gerar Roteiro"
               onPress={() => setShowGenerate(true)}
-            >
-              <Text style={styles.generateBtnIcon}>✨</Text>
-              <Text style={styles.generateBtnTitle}>Gerar Roteiro</Text>
-            </TouchableOpacity>
+              style={styles.generateBtn}
+            />
           </View>
         )}
       </ScrollView>
@@ -590,7 +590,7 @@ export default function RoteirosTab() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#023665' },
+  safe: { flex: 1, backgroundColor: PRIMARY },
 
   header: {
     flexDirection: 'row',
@@ -601,17 +601,16 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 24,
   },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
-  cancelSelectText: { fontSize: 15, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
-  selectAllText: { fontSize: 15, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  headerTitle: { fontSize: Platform.OS === 'ios' ? 16 : 24, fontWeight: 'bold', color: '#fff' },
+  headerSub: { fontSize: Platform.OS === 'ios' ? 13 : 18, color: '#d4d4d4', marginTop: 2 },
+  cancelSelectText: { fontSize: 15, color: '#ffffff', fontWeight: '500' },
+  selectAllText: { fontSize: 15, color: '#ffffff', fontWeight: '500' },
   avatarBtn: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)',
   },
-  avatarBtnText: { fontSize: 22 },
 
   adminBanner: {
     flexDirection: 'row', alignItems: 'center',
@@ -623,9 +622,9 @@ const styles = StyleSheet.create({
   adminBannerText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#7a5f00' },
   adminBannerArrow: { fontSize: 20, color: '#c0a000' },
 
-  content: { padding: 20, paddingBottom: 32, backgroundColor: '#f4f6f9' },
+  content: { padding: 20, paddingBottom: 32, backgroundColor: '#fff' },
 
-  centerState: { alignItems: 'center', paddingTop: 60 },
+  centerState: { alignItems: 'center', paddingTop: 60, flex: 1, marginVertical: 100 },
   stateText: { marginTop: 16, fontSize: 15, color: '#888' },
 
   sectionLabel: {
@@ -665,7 +664,7 @@ const styles = StyleSheet.create({
   activeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#43a047' },
   activeBadgeText: { fontSize: 12, fontWeight: '700', color: '#2e7d32' },
   itineraryDates: { fontSize: 12, color: '#8a9ab0', fontWeight: '500' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 5 },
   itineraryCardTitle: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
   chevron: { fontSize: 22, color: '#c0ccd8', marginLeft: 8 },
   itineraryCardSub: { fontSize: 13, color: '#8a9ab0', marginBottom: 20 },
@@ -679,23 +678,30 @@ const styles = StyleSheet.create({
   timelineTime: { fontSize: 13, fontWeight: '700', color: PRIMARY, marginBottom: 2 },
   timelineName: { fontSize: 15, fontWeight: '600', color: '#1a1a1a', marginBottom: 2 },
   timelineAddress: { fontSize: 12, color: '#8a9ab0' },
+  divider: { height: 1, backgroundColor: '#f0f4f8', marginVertical: 12 },
 
   deleteBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderWidth: 1.5, borderColor: '#fca5a5', borderRadius: 12,
-    paddingVertical: 13, backgroundColor: '#fff5f5', marginBottom: 24, minHeight: 48,
+    paddingVertical: 13, backgroundColor: '#fff5f5', minHeight: 48,
   },
-  deleteBtnIcon: { fontSize: 16 },
   deleteBtnText: { fontSize: 15, fontWeight: '600', color: '#EF4444' },
 
   emptyState: {
-    alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32,
-    backgroundColor: '#f4f6f9', flex: 1, justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff', flex: 1, justifyContent: 'center',
+    paddingLeft: 40,
   },
   emptyEmoji: { fontSize: 64, marginBottom: 20 },
-  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10 },
-  emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center', lineHeight: 22 },
-
+  emptyTitle: { fontSize: 18, fontFamily: 'Inter-Bold', color: '#1a1a1a', marginBottom: 10, textAlign: 'center' },
+  emptyBody: { fontSize: Platform.OS === 'ios' ? 16 : 22, fontFamily: 'Inter', color: '#1a1a1a', marginBottom: 10, textAlign: 'center', },
+  emptyDesc: { fontSize: 13, color: '#1a1a1a', marginTop: 2, textAlign: 'center', lineHeight: 22 },
+  placeholderImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+    resizeMode: 'cover',
+  },
   inactiveCard: {
     backgroundColor: '#fff', borderRadius: 14,
     paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10,
@@ -713,7 +719,6 @@ const styles = StyleSheet.create({
   },
   activateBtnText: { fontSize: 13, fontWeight: '700', color: PRIMARY },
   inactiveDeleteBtn: { padding: 6 },
-  inactiveDeleteIcon: { fontSize: 16 },
 
   generateSection: { marginTop: 8 },
   generateLabel: {
@@ -725,6 +730,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
     shadowColor: PRIMARY, shadowOpacity: 0.3, shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 }, elevation: 5,
+    width: '80%', alignSelf: 'center', height: 55,
   },
   generateBtnIcon: { fontSize: 24 },
   generateBtnTitle: { fontSize: 17, fontWeight: 'bold', color: '#fff' },
@@ -743,4 +749,112 @@ const styles = StyleSheet.create({
   },
   bulkDeleteBtnDisabled: { backgroundColor: '#fca5a5' },
   bulkDeleteBtnText: { fontSize: 14, fontWeight: 'bold', color: '#fff' },
+
+  cardsStack: {
+    width: 320,
+    height: 240,
+    marginBottom: 32,
+    position: 'relative',
+  },
+  exploreBanner: {
+    height: 160,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  exploreBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,20,60,0.52)',
+  },
+  exploreBannerContent: {
+    padding: 20,
+    gap: 6,
+  },
+  exploreBannerTag: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  exploreBannerTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  exploreBannerTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
+    lineHeight: 28,
+    letterSpacing: -0.3,
+  },
+  exploreBannerBtn: {
+    marginTop: 6,
+    backgroundColor: PRIMARY,
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  exploreBannerBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    width: 160,
+    height: 200,
+    borderRadius: 20,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
+    flex: 1,
+  },
+  timeBadge: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: Platform.OS === 'ios' ? 2 : 3,
+    marginLeft: 6,
+    flexShrink: 1,
+  },
+  timeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  cardImage: {
+    width: '100%',
+    height: 110,
+    borderRadius: 12,
+    resizeMode: 'cover',
+  },
+  
 });

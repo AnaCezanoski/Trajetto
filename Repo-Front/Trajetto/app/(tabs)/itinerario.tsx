@@ -4,13 +4,16 @@ import { Places, useItineraryStore } from '@/hooks/itineraryStore';
 import { Place, placesService } from '@/services/placesService';
 import { RatingService, RatingSummary } from '@/services/ratingService';
 import StarRating from '@/components/Rating';
+import CustomButton from '@/components/CustomButton';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withSequence,
   withTiming,
+  Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -22,37 +25,138 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  Image,
   TouchableOpacity,
   View,
   Modal,
   TextInput,
   Alert,
+  ImageSourcePropType,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isPlacePast } from '../utils/isPlacePast';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { TicketCard } from '@/components/TicketCard';
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 function categoryIcon(category: string): string {
   const c = (category || '').toLowerCase();
-  if (c.includes('museum'))   return '🏛️';
+  if (c.includes('museum')) return '🏛️';
   if (c.includes('monument')) return '🗿';
-  if (c.includes('castle'))   return '🏰';
-  if (c.includes('church'))   return '⛪';
-  if (c.includes('park'))     return '🌳';
-  if (c.includes('square'))   return '🏙️';
+  if (c.includes('castle')) return '🏰';
+  if (c.includes('church')) return '⛪';
+  if (c.includes('park')) return '🌳';
+  if (c.includes('square')) return '🏙️';
   if (c.includes('fountain')) return '⛲';
-  if (c.includes('ruins'))    return '🏚️';
-  if (c.includes('art'))      return '🎨';
-  if (c.includes('view'))     return '🌄';
+  if (c.includes('ruins')) return '🏚️';
+  if (c.includes('art')) return '🎨';
+  if (c.includes('view')) return '🌄';
   if (c.includes('restaurant') || c.includes('food')) return '🍽️';
   if (c.includes('cafe') || c.includes('coffee')) return '☕';
   return '📍';
 }
+
+const DESTINATIONS = [
+  {
+    title: 'Tokyo',
+    subtitle: 'Japão',
+    time: '14h voo',
+    image: require('@/assets/appImgs/tokyoImg.jpg'),
+    bgColor: '#1a1a1a',
+  },
+  {
+    title: 'Paris',
+    subtitle: 'França',
+    time: '11h voo',
+    image: require('@/assets/appImgs/parisImg.jpg'),
+    bgColor: '#e85d9b',
+  },
+  {
+    title: 'NYC',
+    subtitle: 'EUA',
+    time: '9h voo',
+    image: require('@/assets/appImgs/nycImg.jpg'),
+    bgColor: '#3b82f6',
+  },
+  {
+    title: 'Roma',
+    subtitle: 'Itália',
+    time: '12h voo',
+    image: require('@/assets/appImgs/romeImg.jpg'),
+    bgColor: '#c7be40',
+  },
+  {
+    title: 'Veneza',
+    subtitle: 'Itália',
+    time: '12h voo',
+    image: require('@/assets/appImgs/veniceImg.jpg'),
+    bgColor: '#aa88da',
+  },
+  {
+    title: 'Curitiba',
+    subtitle: 'Brasil',
+    time: '2h voo',
+    image: require('@/assets/appImgs/jdBotanicoImg.jpg'),
+    bgColor: '#85d363',
+  },
+];
+
+function DestinationCard({
+  title, subtitle, time, image, bgColor, rotation, style, animKey,
+}: {
+  title: string;
+  subtitle: string;
+  time: string;
+  image: ImageSourcePropType;
+  bgColor: string;
+  rotation: string;
+  style?: object;
+  animKey: number;
+}) {
+  const swing = useSharedValue(0);
+
+  useEffect(() => {
+    swing.value = withSequence(
+      withTiming(-8, { duration: 80, easing: Easing.out(Easing.quad) }),
+      withTiming(6, { duration: 80, easing: Easing.out(Easing.quad) }),
+      withTiming(-4, { duration: 70, easing: Easing.out(Easing.quad) }),
+      withTiming(2, { duration: 70, easing: Easing.out(Easing.quad) }),
+      withTiming(0, { duration: 60, easing: Easing.out(Easing.quad) }),
+    );
+  }, [animKey]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: rotation },
+      { rotate: `${swing.value}deg` },
+    ],
+  }));
+
+  return (
+    <Animated.View style={[cardStyles.card, { backgroundColor: bgColor, transform: [{ rotate: rotation }] }, style, animStyle]}>
+      <View style={cardStyles.cardTop}>
+        <Text style={cardStyles.cardTitle}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+        >{title}</Text>
+        <View style={cardStyles.timeBadge}>
+          <Text style={cardStyles.timeText}
+            adjustsFontSizeToFit
+            numberOfLines={1}
+          >{time}</Text>
+        </View>
+      </View>
+      <Text style={cardStyles.cardSubtitle}>{subtitle}</Text>
+      <Image source={image} style={cardStyles.cardImage} />
+    </Animated.View>
+  );
+}
+
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
@@ -101,7 +205,7 @@ function SwipeableCard({
     <View style={swipeStyles.wrapper}>
       {!disabled && (
         <View style={swipeStyles.hint}>
-          <Text style={swipeStyles.hintIcon}>🔄</Text>
+          <Ionicons name="sync-outline" size={24} color={PRIMARY} />
           <Text style={swipeStyles.hintLabel}>Trocar</Text>
         </View>
       )}
@@ -125,8 +229,7 @@ const swipeStyles = StyleSheet.create({
     paddingRight: 22,
     gap: 4,
   },
-  hintIcon: { fontSize: 22 },
-  hintLabel: { fontSize: 12, fontWeight: '700', color: '#023665' },
+  hintLabel: { fontSize: 12, fontWeight: '700', color: PRIMARY },
   cardWrapper: { flex: 1 },
 });
 
@@ -203,12 +306,23 @@ const altStyles = StyleSheet.create({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ItinerarioTab() {
+  const insets = useSafeAreaInsets();
+
   const { user } = useAuth();
   const {
     itinerary, loading,
     highlightedPlaceIndex, setHighlightedPlace,
     setFocusedMapPlace, replacePlace,
   } = useItineraryStore();
+
+  const [destIndex, setDestIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDestIndex(prev => (prev + 1) % DESTINATIONS.length);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [layoutReady, setLayoutReady] = React.useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -448,10 +562,65 @@ export default function ItinerarioTab() {
 
   if (!itinerary) {
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyEmoji}>📋</Text>
-        <Text style={styles.emptyTitle}>Sem itinerário</Text>
-        <Text style={styles.emptyDesc}>Nenhum roteiro encontrado.</Text>
+      <View style={{ paddingHorizontal: 24, flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 50, backgroundColor: '#fff' }}>
+        <View style={{ flexDirection: 'column', gap: 0, justifyContent: 'center', }}>
+          <Text style={[styles.emptyBody, { marginTop: 70, lineHeight: Platform.OS === 'ios' ? 22 : 30 }]}>
+            Gere um roteiro personalizado
+          </Text>
+          <View style={{ marginTop: -10, flexDirection: 'row', gap: 7, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={[styles.emptyBody, { lineHeight: Platform.OS === 'ios' ? 22 : 30 }]}>
+              e planeje seu
+            </Text>
+            <Text style={{ marginTop: -5, fontSize: Platform.OS === 'ios' ? 16 : 25, fontFamily: 'FugazOne', color: PRIMARY, alignSelf: 'center', lineHeight: Platform.OS === 'ios' ? 22 : 30 }}>
+              Trajetto
+            </Text>
+
+          </View>
+
+
+
+        </View>
+        <View style={[styles.emptyState, { marginVertical: 50, backgroundColor: '#fff' }]}>
+          <View style={styles.cardsStack}>
+            <DestinationCard
+              title={DESTINATIONS[destIndex].title}
+              subtitle={DESTINATIONS[destIndex].subtitle}
+              time={DESTINATIONS[destIndex].time}
+              image={DESTINATIONS[destIndex].image}
+              bgColor={DESTINATIONS[destIndex].bgColor}
+              rotation="-6deg"
+              style={{ position: 'absolute', left: 0, top: 20 }}
+              animKey={destIndex}
+            />
+            <DestinationCard
+              title={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].title}
+              subtitle={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].subtitle}
+              time={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].time}
+              image={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].image}
+              bgColor={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].bgColor}
+              rotation="4deg"
+              style={{ position: 'absolute', left: 60, top: 0 }}
+              animKey={destIndex}
+            />
+            <DestinationCard
+              title={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].title}
+              subtitle={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].subtitle}
+              time={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].time}
+              image={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].image}
+              bgColor={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].bgColor}
+              rotation="-2deg"
+              style={{ position: 'absolute', left: 120, top: 30 }}
+              animKey={destIndex}
+            />
+          </View>
+        </View>
+        <View style={{ paddingHorizontal: 24, paddingBottom: 60 }}>
+          <CustomButton
+            title="Ir para Início"
+            onPress={() => router.push('/')}
+            style={{ marginTop: 0 }}
+          />
+        </View>
       </View>
     );
   }
@@ -459,7 +628,8 @@ export default function ItinerarioTab() {
   const sorted = [...itinerary.places].sort((a, b) => a.orderIndex - b.orderIndex);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
+      <View style={{ height: insets.top, backgroundColor: PRIMARY }} />
       <ScrollView
         ref={scrollRef}
         style={styles.container}
@@ -528,59 +698,19 @@ export default function ItinerarioTab() {
 
                 {/* Swipeable card — apenas futuros */}
                 <SwipeableCard onSwipeLeft={() => handleSwipeLeft(place)} disabled={isPast}>
-                  <TouchableOpacity
-                    style={[
-                      styles.card,
-                      isLast && { marginBottom: 0 },
-                      isHighlighted && { borderWidth: 2, borderColor: color, shadowOpacity: 0.18 },
-                      isPast && { backgroundColor: '#d9d9d9', opacity: 0.3 },
-                    ]}
-                    activeOpacity={0.75}
+                  <TicketCard
+                    place={place}
+                    idx={idx}
+                    color={color}
+                    isPast={isPast}
+                    isHighlighted={isHighlighted}
+                    isLast={isLast}
                     onPress={() => {
                       setFocusedMapPlace(idx);
                       router.push({ pathname: '/mapa', params: { from: 'itinerario' } });
                     }}
-                  >
-                    <View style={styles.cardTop}>
-                      <View style={[styles.orderBadge, { backgroundColor: color }]}>
-                        <Text style={styles.orderText}>{idx + 1}</Text>
-                      </View>
-                      <Text style={[styles.timeText, { color }]}>{formatTime(place.estimatedVisitTime)}</Text>
-                    </View>
-                    <Text style={styles.placeName}>{place.name}</Text>
-                    <View style={styles.tagsRow}>
-                      {place.category ? (
-                        <View style={styles.categoryBadge}>
-                          <Text style={styles.categoryText}>
-                            {categoryIcon(place.category)}{' '}
-                            {place.category.charAt(0).toUpperCase() + place.category.slice(1)}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {place.fee === 'yes' ? (
-                        <View style={styles.feeBadge}>
-                          <Text style={styles.feeText}>🎟️ Paid entry</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={styles.placeAddress} numberOfLines={2}>{place.address}</Text>
-                    {place.openingHours ? (
-                      <View style={styles.hoursRow}>
-                        <Text style={styles.hoursIcon}>🕐</Text>
-                        <Text style={styles.hoursText} numberOfLines={2}>{place.openingHours}</Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.infoSection}>
-                      <Text style={[styles.mapHint, { color }]}>Ver no mapa ↗</Text>
-                      <TouchableOpacity
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                        onPress={() => openBottomSheet(place)}
-                      >
-                        <Text style={[styles.mapHint, { color }]}>Sobre</Text>
-                        <Text style={{ fontSize: 11, color }}>ℹ️</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
+                    onInfoPress={() => openBottomSheet(place)}
+                  />
                 </SwipeableCard>
               </View>
             );
@@ -588,9 +718,12 @@ export default function ItinerarioTab() {
         </View>
 
         {/* Botão de Exportar PDF */}
-        <TouchableOpacity style={styles.btnExport} onPress={handleExportPDF}>
-          <Text style={styles.btnExportText}>📄 Exportar em PDF</Text>
-        </TouchableOpacity>
+        <CustomButton
+          title="Exportar em PDF"
+          onPress={handleExportPDF}
+          icon={<Ionicons name="download-outline" size={22} color="#fff" />}
+          style={styles.btnExport}
+        />
 
       </ScrollView>
 
@@ -683,7 +816,7 @@ export default function ItinerarioTab() {
                 <TouchableOpacity onPress={() => setIsRatingOpen(!isRatingOpen)}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Text style={styles.bsTextTertiary}>⭐ {ratingData?.average?.toFixed(1) ?? '0.0'}</Text>
-                    <StarRating value={ratingData?.average ?? 0} size={18} onChange={() => {}} readonly />
+                    <StarRating value={ratingData?.average ?? 0} size={18} onChange={() => { }} readonly />
                     <Text style={styles.bsTextTertiary}>{ratingData?.count ?? 0} visitaram</Text>
                     <Text style={{ marginLeft: 'auto', color: PRIMARY }}>{isRatingOpen ? '▲' : '▼'}</Text>
                   </View>
@@ -751,7 +884,7 @@ export default function ItinerarioTab() {
                             </View>
                             <View style={{ flex: 1 }}>
                               <Text style={styles.reviewName}>{name}</Text>
-                              <StarRating value={r.rating} size={14} readonly onChange={() => {}} />
+                              <StarRating value={r.rating} size={14} readonly onChange={() => { }} />
                             </View>
                             {isMe && (
                               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -798,24 +931,25 @@ export default function ItinerarioTab() {
           </Pressable>
         </BottomSheetView>
       </BottomSheet>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#023665' },
+  safe: { flex: 1, backgroundColor: PRIMARY },
   container: { flex: 1, backgroundColor: '#f4f6f9' },
   content: { padding: 20, paddingBottom: 32 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   loadingText: { marginTop: 16, fontSize: 15, color: '#888' },
   emptyState: {
-    alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32,
-    backgroundColor: '#f9f9f9', flex: 1, justifyContent: 'center',
+    alignItems: 'center', paddingHorizontal: 32,
+    backgroundColor: '#f9f9f9', justifyContent: 'center',
   },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 8 },
   emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center' },
+  emptyBody: { fontSize: Platform.OS === 'ios' ? 16 : 22, fontFamily: 'Inter', color: '#1a1a1a', marginBottom: 10, textAlign: 'center', },
 
   headerCard: {
     backgroundColor: PRIMARY, borderRadius: 20, padding: 24, marginBottom: 24,
@@ -860,7 +994,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 },
   orderBadge: {
     width: 26, height: 26, borderRadius: 13,
     alignItems: 'center', justifyContent: 'center',
@@ -879,10 +1013,17 @@ const styles = StyleSheet.create({
   feeText: { fontSize: 12, fontWeight: '600', color: '#c2410c' },
   placeAddress: { fontSize: 13, color: '#8a9ab0', lineHeight: 18, marginBottom: 6 },
   hoursRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 6 },
-  hoursIcon: { fontSize: 12, marginTop: 1 },
+  hoursIcon: { marginTop: 1 },
   hoursText: { fontSize: 12, color: '#6b7280', flex: 1, lineHeight: 17 },
-  mapHint: { fontSize: 11, fontWeight: '600', opacity: 0.75 },
+  mapHint: { fontSize: Platform.OS === 'ios' ? 14 : 16, fontWeight: '600', opacity: 0.75 },
   infoSection: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+
+  cardsStack: {
+    width: 320,
+    height: 240,
+    position: 'relative',
+    marginLeft: 40
+  },
 
   bottomSheetContent: { flex: 1, margin: 16, gap: 5, paddingBottom: 30 },
   bsTextPrimary: { fontSize: 22, fontWeight: 'bold', color: PRIMARY },
@@ -925,11 +1066,63 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 4
+    elevation: 4,
+    width: '80%', alignSelf: 'center', height: 55, paddingVertical: 10
   },
   btnExportText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16
   }
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    width: 160,
+    height: 200,
+    borderRadius: 20,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
+    flex: 1,
+  },
+  timeBadge: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: Platform.OS === 'ios' ? 2 : 3,
+    marginLeft: 6,
+    flexShrink: 1,
+  },
+  timeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  cardImage: {
+    width: '100%',
+    height: 110,
+    borderRadius: 12,
+    resizeMode: 'cover',
+  },
 });

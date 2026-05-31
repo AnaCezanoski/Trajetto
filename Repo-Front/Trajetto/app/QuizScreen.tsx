@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { quizData, shuffle, calcularPerfil, Pergunta } from '../data/quizData';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const INITIAL_SCORES: Record<string, number> = {
   AVENTUREIRO: 0, CULTURAL: 0, NATUREZA: 0, LUXO: 0,
@@ -12,6 +13,7 @@ const INITIAL_SCORES: Record<string, number> = {
 };
 
 export default function QuizScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { source } = useLocalSearchParams<{ source?: string }>();
   const [questions, setQuestions] = useState<Pergunta[]>([]);
@@ -63,14 +65,18 @@ export default function QuizScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.counter}>{currentIndex + 1}/{total}</Text>
-      </View>
+        <View style={[styles.headerWrapper, { paddingTop: insets.top }]}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn} activeOpacity={0.7}>
+                <Ionicons name="chevron-back" size={32} color={'white'} />
+              </TouchableOpacity>
+              <Text style={styles.headerText}>Teste de Viajante</Text>
+            </View>
+          </View>
+        </View>
 
       {/* Progress bar */}
       <View style={styles.progressTrack}>
@@ -139,11 +145,11 @@ export default function QuizScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const PRIMARY = '#023665';
+const PRIMARY = '#006ecf';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
@@ -245,4 +251,11 @@ const styles = StyleSheet.create({
   },
   nextButtonDisabled: { backgroundColor: '#93adc8' },
   nextButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  headerWrapper: { paddingHorizontal: 24, backgroundColor: PRIMARY, marginBottom: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', position: 'relative', height: 56 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  headerBackBtn: { paddingVertical: 4, paddingRight: 8, marginLeft: -12 },
+  headerText: { fontSize: 18, fontWeight: '700', color: 'white' },
+  headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+
 });
