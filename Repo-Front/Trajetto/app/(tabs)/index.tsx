@@ -563,7 +563,6 @@ export default function RoteirosTab() {
             <CustomButton
               title="Gerar Roteiro"
               onPress={() => setShowGenerate(true)}
-              style={styles.generateBtn}
             />
           </View>
         )}
