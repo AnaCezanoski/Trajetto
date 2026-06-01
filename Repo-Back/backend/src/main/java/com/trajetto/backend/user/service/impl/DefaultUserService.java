@@ -83,11 +83,20 @@ public class DefaultUserService implements UserService {
 
                 SimpleMailMessage message = new SimpleMailMessage();
                 message.setTo(saved.getEmail());
-                message.setSubject("Código de Verificação - Trajetto");
-                message.setText("Olá, " + saved.getFirstName() + "!\n\n"
-                        + "Bem-vindo ao Trajetto. Seu código de verificação é:\n\n"
-                        + code + "\n\n"
-                        + "Insira este código no aplicativo para ativar sua conta.");
+                message.setSubject("🗺️ Trajetto — Código de Verificação");
+                message.setText(
+                        "Olá, " + saved.getFirstName() + "!\n\n" +
+                                "Bem-vindo(a) ao Trajetto. Para ativar sua conta, utilize o código abaixo:\n\n" +
+                                "━━━━━━━━━━━━━━━━━━━━━━\n" +
+                                " CÓDIGO DE VERIFICAÇÃO: " + code + "\n" +
+                                "━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                                "Este código é válido pelos próximos 10 minutos.\n\n" +
+                                "Insira este código no aplicativo para concluir a verificação da sua conta.\n\n" +
+                                "Se você não criou uma conta no Trajetto, pode ignorar este e-mail.\n\n" +
+                                "Stay safe,\n" +
+                                "Trajetto Team ✈️"
+                );
+
                 mailSender.send(message);
 
                 return Collections.singletonList(saved);

@@ -306,6 +306,18 @@ export default function RoteirosTab() {
         </TouchableOpacity>
       )}
 
+    {!selectMode && user?.isAdmin && (
+      <TouchableOpacity
+        style={styles.dashboardBanner}
+        onPress={() => router.push('/DashboardScreen')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.adminBannerIcon}>📊</Text>
+        <Text style={styles.adminBannerText}>Dashboard de uso</Text>
+        <Text style={styles.adminBannerArrow}>›</Text>
+      </TouchableOpacity>
+    )}
+
       <ScrollView
         contentContainerStyle={[styles.content, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
@@ -856,5 +868,10 @@ const cardStyles = StyleSheet.create({
     borderRadius: 12,
     resizeMode: 'cover',
   },
-  
+  dashboardBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#e8f0fe',
+    paddingHorizontal: 20, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#c5d4f8',
+  },
 });

@@ -69,14 +69,14 @@ function RootLayoutNav() {
       router.replace('/LoginScreen');
     } else if (user && inPublic) {
       if (user.isAdmin) {
-        router.replace('/UserListScreen');
+        router.replace('/AdminPanelScreen');
       } else if (needsQuiz) {
         router.replace('/TravelerTestScreen');
       } else {
         router.replace('/(tabs)');
       }
     } else if (user?.isAdmin && inTabs) {
-      router.replace('/UserListScreen');
+      router.replace('/AdminPanelScreen');
     }
 
     if (fontsLoaded || fontError) {
@@ -106,6 +106,8 @@ function RootLayoutNav() {
         <Stack.Screen name="ExploreScreen" options={{ headerShown: false }} />
         <Stack.Screen name="SpotDetailScreen" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="AdminPanelScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="DashboardScreen" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
