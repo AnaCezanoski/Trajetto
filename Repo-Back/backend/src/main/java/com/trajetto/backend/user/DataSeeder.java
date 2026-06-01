@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-@Component
+// @Component
 @Order(2)
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
