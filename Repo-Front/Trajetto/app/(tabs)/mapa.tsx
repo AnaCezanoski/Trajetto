@@ -13,14 +13,123 @@ import { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, Text, TextInput, TouchableOpacity,
   View, FlatList, Keyboard, Modal, ScrollView,
-  ActivityIndicator, Switch, Animated,
+  ActivityIndicator, Switch, Image, ImageSourcePropType,
+  Platform,
 } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
+import CustomButton from '@/components/CustomButton';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withSequence,
+  withTiming,
+  withRepeat,
+  cancelAnimation,
+  Easing,
+  runOnJS,
+} from 'react-native-reanimated';
 
 type LatLng = { latitude: number; longitude: number };
 type Region = LatLng & { latitudeDelta: number; longitudeDelta: number };
 
 const PRIMARY = '#006ecf';
+
+const DESTINATIONS = [
+  {
+    title: 'Tokyo',
+    subtitle: 'Japão',
+    time: '14h voo',
+    image: require('@/assets/appImgs/tokyoImg.jpg'),
+    bgColor: '#1a1a1a',
+  },
+  {
+    title: 'Paris',
+    subtitle: 'França',
+    time: '11h voo',
+    image: require('@/assets/appImgs/parisImg.jpg'),
+    bgColor: '#e85d9b',
+  },
+  {
+    title: 'NYC',
+    subtitle: 'EUA',
+    time: '9h voo',
+    image: require('@/assets/appImgs/nycImg.jpg'),
+    bgColor: '#3b82f6',
+  },
+  {
+    title: 'Roma',
+    subtitle: 'Itália',
+    time: '12h voo',
+    image: require('@/assets/appImgs/romeImg.jpg'),
+    bgColor: '#c7be40',
+  },
+  {
+    title: 'Veneza',
+    subtitle: 'Itália',
+    time: '12h voo',
+    image: require('@/assets/appImgs/veniceImg.jpg'),
+    bgColor: '#aa88da',
+  },
+  {
+    title: 'Curitiba',
+    subtitle: 'Brasil',
+    time: '2h voo',
+    image: require('@/assets/appImgs/jdBotanicoImg.jpg'),
+    bgColor: '#85d363',
+  },
+];
+
+function DestinationCard({
+  title, subtitle, time, image, bgColor, rotation, style, animKey,
+}: {
+  title: string;
+  subtitle: string;
+  time: string;
+  image: ImageSourcePropType;
+  bgColor: string;
+  rotation: string;
+  style?: object;
+  animKey: number;
+}) {
+  const swing = useSharedValue(0);
+
+  useEffect(() => {
+    swing.value = withSequence(
+      withTiming(-8, { duration: 80, easing: Easing.out(Easing.quad) }),
+      withTiming(6, { duration: 80, easing: Easing.out(Easing.quad) }),
+      withTiming(-4, { duration: 70, easing: Easing.out(Easing.quad) }),
+      withTiming(2, { duration: 70, easing: Easing.out(Easing.quad) }),
+      withTiming(0, { duration: 60, easing: Easing.out(Easing.quad) }),
+    );
+  }, [animKey]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { rotate: rotation },
+      { rotate: `${swing.value}deg` },
+    ],
+  }));
+
+  return (
+    <Animated.View style={[cardStyles.card, { backgroundColor: bgColor, transform: [{ rotate: rotation }] }, style, animStyle]}>
+      <View style={cardStyles.cardTop}>
+        <Text style={cardStyles.cardTitle}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+        >{title}</Text>
+        <View style={cardStyles.timeBadge}>
+          <Text style={cardStyles.timeText}
+            adjustsFontSizeToFit
+            numberOfLines={1}
+          >{time}</Text>
+        </View>
+      </View>
+      <Text style={cardStyles.cardSubtitle}>{subtitle}</Text>
+      <Image source={image} style={cardStyles.cardImage} />
+    </Animated.View>
+  );
+}
 
 // Haversine no frontend para mostrar distância no card
 function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -149,7 +258,11 @@ const Mapa = () => {
   const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animações do mapa
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useSharedValue(0);
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: pulseAnim.value,
+    transform: [{ scale: 1 + pulseAnim.value * 0.6 }],
+  }));
 
   // ─── Search ───────────────────────────────────────────
   const [search, setSearch]           = useState('');
@@ -342,14 +455,8 @@ const Mapa = () => {
 
   // Pulso no próximo destino
   useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 900, useNativeDriver: true }),
-      ])
-    );
-    anim.start();
-    return () => anim.stop();
+    pulseAnim.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
+    return () => cancelAnimation(pulseAnim);
   }, []);
 
   useEffect(() => {
@@ -373,13 +480,70 @@ const Mapa = () => {
     ? haversineMeters(userLocation.latitude, userLocation.longitude, selectedSpot.latitude, selectedSpot.longitude)
     : null;
 
+  const [destIndex, setDestIndex] = useState(0);
+
   if (!itinerary) {
     return (
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyEmoji}>🗺️</Text>
-        <Text style={styles.emptyTitle}>Nenhum roteiro ainda</Text>
-        <Text style={styles.emptyDesc}>Crie seu primeiro roteiro personalizado e comece a explorar o mundo.</Text>
-      </View>
+     <View style={{ paddingHorizontal: 24, flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 50, backgroundColor: '#fff' }}>
+             <View style={{ flexDirection: 'column', gap: 0, justifyContent: 'center', }}>
+               <Text style={[styles.emptyBody, { marginTop: 70, lineHeight: Platform.OS === 'ios' ? 22 : 30 }]}>
+                 Gere um roteiro personalizado
+               </Text>
+               <View style={{ marginTop: -10, flexDirection: 'row', gap: 7, justifyContent: 'center', alignItems: 'center' }}>
+                 <Text style={[styles.emptyBody, { lineHeight: Platform.OS === 'ios' ? 22 : 30 }]}>
+                   e planeje seu
+                 </Text>
+                 <Text style={{ marginTop: -5, fontSize: Platform.OS === 'ios' ? 16 : 25, fontFamily: 'FugazOne', color: PRIMARY, alignSelf: 'center', lineHeight: Platform.OS === 'ios' ? 22 : 30 }}>
+                   Trajetto
+                 </Text>
+     
+               </View>
+     
+     
+     
+             </View>
+             <View style={[styles.emptyState, { marginVertical: 50, backgroundColor: '#fff' }]}>
+               <View style={styles.cardsStack}>
+                 <DestinationCard
+                   title={DESTINATIONS[destIndex].title}
+                   subtitle={DESTINATIONS[destIndex].subtitle}
+                   time={DESTINATIONS[destIndex].time}
+                   image={DESTINATIONS[destIndex].image}
+                   bgColor={DESTINATIONS[destIndex].bgColor}
+                   rotation="-6deg"
+                   style={{ position: 'absolute', left: 0, top: 20 }}
+                   animKey={destIndex}
+                 />
+                 <DestinationCard
+                   title={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].title}
+                   subtitle={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].subtitle}
+                   time={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].time}
+                   image={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].image}
+                   bgColor={DESTINATIONS[(destIndex + 1) % DESTINATIONS.length].bgColor}
+                   rotation="4deg"
+                   style={{ position: 'absolute', left: 60, top: 0 }}
+                   animKey={destIndex}
+                 />
+                 <DestinationCard
+                   title={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].title}
+                   subtitle={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].subtitle}
+                   time={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].time}
+                   image={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].image}
+                   bgColor={DESTINATIONS[(destIndex + 2) % DESTINATIONS.length].bgColor}
+                   rotation="-2deg"
+                   style={{ position: 'absolute', left: 120, top: 30 }}
+                   animKey={destIndex}
+                 />
+               </View>
+             </View>
+             <View style={{ paddingHorizontal: 24, paddingBottom: 60 }}>
+               <CustomButton
+                 title="Ir para Início"
+                 onPress={() => router.push('/')}
+                 style={{ marginTop: 0 }}
+               />
+             </View>
+           </View>
     );
   }
 
@@ -453,10 +617,7 @@ const Mapa = () => {
               <View style={styles.markerWrapper}>
                 {/* Pulso no próximo destino */}
                 {isNext && (
-                  <Animated.View style={[
-                    mapStyles.pulse,
-                    { borderColor: color, opacity: pulseAnim, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }] }
-                  ]} />
+                  <Animated.View style={[mapStyles.pulse, { borderColor: color }, pulseStyle]} />
                 )}
                 <TouchableOpacity
                   style={[styles.label, { borderColor: isPast ? '#c8ced8' : color, backgroundColor: isPast ? '#f0f2f5' : '#fff', opacity: isPast ? 0.6 : 1 }]}
@@ -895,6 +1056,13 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 64, marginBottom: 20 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10 },
   emptyDesc: { fontSize: 15, color: '#888', textAlign: 'center', lineHeight: 22 },
+  emptyBody: { fontSize: Platform.OS === 'ios' ? 16 : 22, fontFamily: 'Inter', color: '#1a1a1a', marginBottom: 10, textAlign: 'center', },
+  cardsStack: {
+    width: 320,
+    height: 240,
+    position: 'relative',
+    marginLeft: 40
+  },
 });
 
 const mapStyles = StyleSheet.create({
@@ -931,5 +1099,56 @@ const mapStyles = StyleSheet.create({
     borderWidth: 2.5,
     bottom: 32, alignSelf: 'center',
     zIndex: -1,
+  },
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    width: 160,
+    height: 200,
+    borderRadius: 20,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#fff',
+    flex: 1,
+  },
+  timeBadge: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: Platform.OS === 'ios' ? 2 : 3,
+    marginLeft: 6,
+    flexShrink: 1,
+  },
+  timeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  cardImage: {
+    width: '100%',
+    height: 110,
+    borderRadius: 12,
+    resizeMode: 'cover',
   },
 });

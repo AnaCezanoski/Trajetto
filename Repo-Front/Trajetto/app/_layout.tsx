@@ -96,7 +96,7 @@ function RootLayoutNav() {
         <Stack.Screen name="VerifyEmailScreen" options={{ headerShown: false }} />
         <Stack.Screen name="UserListScreen" options={{ title: 'Usuários', headerBackTitle: '' }} />
         <Stack.Screen name="UserDetailScreen" options={{ headerShown: false }} />
-        <Stack.Screen name="ForgotPasswordScreen" options={{ title: 'Esqueci a Senha', headerBackTitle: '' }} />
+        <Stack.Screen name="ForgotPasswordScreen" options={{ headerShown: false }} />
         <Stack.Screen name="ResetPasswordScreen" options={{ title: 'Redefinir Senha', headerBackTitle: '' }} />
         <Stack.Screen name="TravelerTestScreen" options={{ headerShown: false }} />
         <Stack.Screen name="QuizScreen" options={{ headerShown: false }} />
