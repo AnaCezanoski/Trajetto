@@ -185,6 +185,20 @@ Certifique-se de ter o MySQL rodando e as credenciais configuradas em `src/main/
 http://localhost:8080
 ```
 
+## Banco de dados
+
+O esquema é versionado com **Flyway** e vive em
+`Repo-Back/backend/src/main/resources/db/migration`.
+
+Não é preciso criar tabela alguma na mão: com o MySQL rodando, o backend cria o
+banco e aplica as migrações na primeira execução. A aplicação não altera mais o
+esquema por conta própria — ela apenas valida, ao subir, se o banco corresponde
+às entidades.
+
+Qualquer mudança de estrutura entra como um arquivo novo `V<n>__descricao.sql`
+naquela pasta, revisado junto com o código. As regras e o passo a passo estão no
+[README das migrações](Repo-Back/backend/src/main/resources/db/migration/README.md).
+
 ## Executar o Mobile
 ```bash
 cd Repo-Front/Trajetto
