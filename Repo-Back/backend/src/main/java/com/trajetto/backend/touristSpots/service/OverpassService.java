@@ -1,10 +1,15 @@
 package com.trajetto.backend.touristSpots.service;
 
 import com.trajetto.backend.touristSpots.dto.TouristSpotDTO;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.trajetto.backend.exception.ApiErrorCode;
+import com.trajetto.backend.exception.ApiException;
+import com.trajetto.backend.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,21 +29,27 @@ public class OverpassService {
     }
 
     // Passo 1: Converte nome da cidade em lat/lon via Nominatim (OpenStreetMap)
-    public double[] getCityCoordinates(String cityName) throws Exception {
+    public double[] getCityCoordinates(String cityName) {
         String url = "https://nominatim.openstreetmap.org/search?q="
                 + cityName.replace(" ", "+")
                 + "&format=json&limit=1";
 
-        String response = restClient.get()
-                .uri(url)
-                .header("User-Agent", "Trajetto/1.0")
-                .retrieve()
-                .body(String.class);
+        JsonNode root;
+        try {
+            String response = restClient.get()
+                    .uri(url)
+                    .header("User-Agent", "Trajetto/1.0")
+                    .retrieve()
+                    .body(String.class);
 
-        JsonNode root = objectMapper.readTree(response);
+            root = objectMapper.readTree(response);
+        } catch (RestClientException | JsonProcessingException e) {
+            throw new ApiException(ApiErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "Não foi possível consultar o serviço de localização de cidades.", e);
+        }
 
         if (root.isEmpty()) {
-            throw new RuntimeException("Cidade não encontrada: " + cityName);
+            throw new ResourceNotFoundException("Nenhuma cidade encontrada com o nome '" + cityName + "'.");
         }
 
         double lat = root.get(0).get("lat").asDouble();
@@ -47,7 +58,7 @@ public class OverpassService {
     }
 
     // Passo 2: Busca pontos turísticos via Overpass API (sem API key)
-    public List<TouristSpotDTO> getTouristSpots(double lat, double lon, int radius) throws Exception {
+    public List<TouristSpotDTO> getTouristSpots(double lat, double lon, int radius) {
         // Locale.US garante ponto decimal (ex: -25.4284) em vez de vírgula (-25,4284)
         // A vírgula causa erro 400 no Overpass API
         String query = String.format(Locale.US,
@@ -60,17 +71,28 @@ public class OverpassService {
                 radius, lat, lon, radius, lat, lon
         );
 
-        String response = restClient.post()
-                .uri(OVERPASS_URL)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body("data=" + java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8))
-                .retrieve()
-                .body(String.class);
+        JsonNode root;
+        try {
+            String response = restClient.post()
+                    .uri(OVERPASS_URL)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body("data=" + java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8))
+                    .retrieve()
+                    .body(String.class);
 
-        JsonNode root = objectMapper.readTree(response);
+            root = objectMapper.readTree(response);
+        } catch (RestClientException | JsonProcessingException e) {
+            throw new ApiException(ApiErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "Não foi possível consultar os pontos turísticos no momento.", e);
+        }
+
         JsonNode elements = root.get("elements");
 
         List<TouristSpotDTO> spots = new ArrayList<>();
+
+        if (elements == null) {
+            return spots;
+        }
 
         for (JsonNode el : elements) {
             String xid   = "osm_" + el.get("id").asText();
@@ -93,7 +115,7 @@ public class OverpassService {
     }
 
     // Função principal: busca por cidade
-    public List<TouristSpotDTO> searchByCity(String cityName, int radius) throws Exception {
+    public List<TouristSpotDTO> searchByCity(String cityName, int radius) {
         double[] coords = getCityCoordinates(cityName);
         return getTouristSpots(coords[0], coords[1], radius);
     }

@@ -1,5 +1,9 @@
 package com.trajetto.backend.user.controller;
 
+import com.trajetto.backend.exception.ApiErrorCode;
+import com.trajetto.backend.exception.ApiException;
+import com.trajetto.backend.exception.InvalidRequestException;
+import com.trajetto.backend.exception.ResourceNotFoundException;
 import com.trajetto.backend.security.UserToken;
 import com.trajetto.backend.user.dto.*;
 import com.trajetto.backend.user.facade.UserFacade;
@@ -8,6 +12,7 @@ import com.trajetto.backend.user.repository.UserRepository;
 import com.trajetto.backend.user.service.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.annotation.security.PermitAll;
+import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,15 +22,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Objects;
 
+/**
+ * Endpoints de usuário.
+ * <p>
+ * Nenhum método trata exceções: qualquer falha é lançada e convertida para o contrato JSON
+ * padrão pelo {@code GlobalExceptionHandler}.
+ */
 @Setter
 @Getter
 @NoArgsConstructor
@@ -47,102 +54,52 @@ public class UserController {
     @SecurityRequirement(name = "AuthServer")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public ResponseEntity<?> getUsers() {
-        try {
-            List<UserResponseDTO> userModelList = this.userFacade.getAllUsers();
-            if (CollectionUtils.isEmpty(userModelList)) {
-                return ResponseEntity.ok().body("No users found");
-            }
-
-            return ResponseEntity.ok().body(userModelList);
-        } catch (Exception e) {
-            logger.error("Unable to get users", e);
-            throw new RuntimeException(e);
-        }
+    public ResponseEntity<List<UserResponseDTO>> getUsers() {
+        return ResponseEntity.ok(userFacade.getAllUsers());
     }
 
     @SecurityRequirement(name = "AuthServer")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable Long id) {
-        try {
-            UserResponseDTO user = userFacade.getUserById(id);
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No user with code: " + id + " found");
-            }
-
-            return ResponseEntity.ok(user);
-        } catch (Exception e) {
-            logger.error("Unable to get user", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error retrieving user");
-        }
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userFacade.getUserById(id));
     }
 
     @SecurityRequirement(name = "AuthServer")
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal UserToken userToken) {
-        if (userToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated user");
-        }
-
-        try {
-            UserResponseDTO user = userFacade.getUserById(userToken.getId());
-            return ResponseEntity.ok(user);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error retrieving logged-in user.");
-        }
+    public ResponseEntity<UserResponseDTO> getCurrentUser(@AuthenticationPrincipal UserToken userToken) {
+        return ResponseEntity.ok(userFacade.getUserById(requireAuthenticated(userToken).getId()));
     }
 
     @SecurityRequirement(name = "AuthServer")
     @PutMapping("/me")
-    public ResponseEntity<?> updateCurrentUser(
+    public ResponseEntity<UserResponseDTO> updateCurrentUser(
             @AuthenticationPrincipal UserToken userToken,
-            @RequestBody UserUpdateDTO userUpdateDTO) {
-        if (userToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated user");
-        }
-
-        try {
-            UserResponseDTO updatedUser = userFacade.updateUserProfile(userToken.getId(), userUpdateDTO);
-            return ResponseEntity.ok(updatedUser);
-        } catch (Exception e) {
-            logger.error("Error updating user profile.", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating profile.");
-        }
+            @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
+        UserResponseDTO updatedUser =
+                userFacade.updateUserProfile(requireAuthenticated(userToken).getId(), userUpdateDTO);
+        return ResponseEntity.ok(updatedUser);
     }
 
     @PermitAll
     @PostMapping("/create")
-    public ResponseEntity<?> createUser(@RequestBody UserDTO userDTO) {
-        try {
-            UserModel userModel = userFacade.fromDto(userDTO);
-            List<UserResponseDTO> createdUsers = userFacade.createUser(userModel);
-
-            return ResponseEntity.ok().body(createdUsers);
-        } catch (Exception e) {
-            logger.error("Unable to create user", e);
-            return ResponseEntity.badRequest().body("Error creating user: " + e.getMessage());
-        }
+    public ResponseEntity<List<UserResponseDTO>> createUser(@Valid @RequestBody UserDTO userDTO) {
+        UserModel userModel = userFacade.fromDto(userDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(userFacade.createUser(userModel));
     }
 
     @SecurityRequirement(name = "AuthServer")
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UserDTO updateModel) {
-        try {
-            if (updateModel != null) {
-                updateModel.setId(id);
-                UserModel model = userFacade.populateUserModel(updateModel);
-
-                return ResponseEntity.ok().body(
-                        Objects.requireNonNullElseGet(model, () -> "No user with code: " + id + " found")
-                );
-            }
-        } catch (Exception e) {
-            logger.error("Unable to update user", e);
-            throw new RuntimeException(e);
+    public ResponseEntity<UserResponseDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO updateModel) {
+        if (updateModel == null) {
+            throw new InvalidRequestException("Os dados de atualização não foram informados.");
         }
-        return ResponseEntity.badRequest().body("Invalid update data");
+
+        updateModel.setId(id);
+        UserModel model = userFacade.populateUserModel(updateModel);
+
+        return ResponseEntity.ok(userFacade.populateUserResponseDTO(model));
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -150,59 +107,45 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
-        try {
-            userFacade.deleteUser(id);
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
-        }
+        userFacade.deleteUser(id);
     }
 
     @PermitAll
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        try {
-            LoginResponse response = userService.login(loginRequest.email(), loginRequest.password());
-            return ResponseEntity.ok(response);
-        } catch (AuthenticationException e) {
-            logger.warn("Login failed for email {}", loginRequest.email());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-        } catch (Exception e) {
-            logger.error("Login error", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal login error");
-        }
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        return ResponseEntity.ok(userService.login(loginRequest.email(), loginRequest.password()));
     }
 
     @SecurityRequirement(name = "AuthServer")
     @PutMapping("/{id}/role")
     public UserResponseDTO updateUserRole(@PathVariable Long id) {
-        try {
-            return userFacade.updateUserRole(id);
-        } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
-        }
+        return userFacade.updateUserRole(id);
     }
 
     @SecurityRequirement(name = "AuthServer")
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@AuthenticationPrincipal UserToken userToken) {
-        if (userToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthenticated user");
-        }
-        logger.info("User {} logged out", userToken.getId());
-        return ResponseEntity.ok().body("Logout successful");
+    public ResponseEntity<MessageResponse> logout(@AuthenticationPrincipal UserToken userToken) {
+        logger.info("User {} logged out", requireAuthenticated(userToken).getId());
+        return ResponseEntity.ok(new MessageResponse("Logout realizado com sucesso."));
     }
 
     @PermitAll
     @PostMapping("/verify")
-    public ResponseEntity<?> verifyEmail(@RequestParam String email, @RequestParam String code) {
+    public ResponseEntity<MessageResponse> verifyEmail(@RequestParam String email, @RequestParam String code) {
         UserModel user = userRepository.findByEmail(email);
-        if (user != null && code.equals(user.getVerificationCode())) {
-            user.setVerified(true);
-            user.setVerificationCode(null);
-            userRepository.save(user);
-            return ResponseEntity.ok("Email verificado com sucesso.");
+        if (user == null) {
+            throw new ResourceNotFoundException("Nenhuma conta encontrada para o e-mail informado.");
         }
-        return ResponseEntity.badRequest().body("Código inválido ou usuário não encontrado.");
+
+        if (!code.equals(user.getVerificationCode())) {
+            throw new InvalidRequestException("Código de verificação inválido.");
+        }
+
+        user.setVerified(true);
+        user.setVerificationCode(null);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new MessageResponse("E-mail verificado com sucesso."));
     }
 
 //    @SecurityRequirement(name = "AuthServer")
@@ -225,4 +168,11 @@ public class UserController {
 //    public Boolean validateCPF(@PathVariable String cpf) {
 //        return userService.existsByCPF(cpf);
 //    }
+
+    private UserToken requireAuthenticated(UserToken userToken) {
+        if (userToken == null) {
+            throw new ApiException(ApiErrorCode.UNAUTHENTICATED);
+        }
+        return userToken;
+    }
 }
