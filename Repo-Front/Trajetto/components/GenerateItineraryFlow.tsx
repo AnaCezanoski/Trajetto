@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { getErrorMessage } from '../utils/apiError';
 import { Itinerary } from '../hooks/itineraryStore';
 import { useItineraryStore } from '../hooks/itineraryStore';
 import CustomButton from './CustomButton';
@@ -229,9 +230,9 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
       const result = await runGenerate();
       setGeneratedItinerary(result);
       setStep('preview');
-    } catch {
+    } catch (e) {
       setStep('config');
-      Alert.alert('Erro', 'Não foi possível gerar o roteiro. Tente novamente.');
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível gerar o roteiro. Tente novamente.'));
     }
   };
 
@@ -242,9 +243,9 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
       const result = await runGenerate();
       setGeneratedItinerary(result);
       setStep('preview');
-    } catch {
+    } catch (e) {
       setStep('config');
-      Alert.alert('Erro', 'Não foi possível gerar o roteiro. Tente novamente.');
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível gerar o roteiro. Tente novamente.'));
     }
   };
 

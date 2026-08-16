@@ -7,6 +7,7 @@ import {
 import CustomInput from '../components/CustomInput';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../services/api';
+import { getErrorMessage } from '../utils/apiError';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../assets/appImgs/logo.svg';
 
@@ -30,8 +31,8 @@ export default function VerifyEmailScreen() {
       await api.post(`/user/verify?email=${email}&code=${codeToVerify}`);
       Alert.alert('Sucesso', 'Conta verificada! Você já pode fazer login.');
       router.replace('/LoginScreen');
-    } catch {
-      Alert.alert('Erro', 'Código inválido. Tente novamente.');
+    } catch (e) {
+      Alert.alert('Erro', getErrorMessage(e, 'Código inválido. Tente novamente.'));
     } finally {
       setLoading(false);
     }

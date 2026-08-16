@@ -111,6 +111,29 @@ automaticamente uma resposta `VALIDATION_ERROR` com a lista de campos em `detail
 public ResponseEntity<List<UserResponseDTO>> createUser(@Valid @RequestBody UserDTO userDTO) { ... }
 ```
 
+## Como o app consome o contrato
+
+O helper `Repo-Front/Trajetto/utils/apiError.ts` lê a resposta de erro e devolve a mensagem
+pronta para a tela — com fallback para falha de rede e para respostas fora do contrato:
+
+```ts
+import { getErrorMessage, getFieldErrors, getErrorCode } from '../utils/apiError';
+
+try {
+  await api.post('/user/create', dados);
+} catch (e) {
+  setErrors(getFieldErrors(e));                 // marca os inputs rejeitados
+  Alert.alert('Erro', getErrorMessage(e));      // mostra a mensagem da API
+}
+```
+
+| Função | Devolve |
+|---|---|
+| `getErrorMessage(erro, fallback?)` | Mensagem para o usuário; em validação, junta as mensagens de `details[]` |
+| `getFieldErrors(erro)` | `{ email: 'Informe um e-mail válido' }` — encaixa direto no `setErrors` dos formulários |
+| `getErrorCode(erro)` | O `code` do contrato, para a tela reagir sem depender do texto |
+| `getErrorStatus(erro)` / `getTraceId(erro)` | Status HTTP e id para busca no log |
+
 ## Testes
 
 ```bash

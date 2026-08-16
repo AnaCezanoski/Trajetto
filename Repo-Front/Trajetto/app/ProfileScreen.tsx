@@ -10,6 +10,7 @@ import {
   maskName, maskBirthDate, maskTelephone,
   validateProfileForm, toBirthDateISO, fromBirthDateISO,
 } from '../utils/validators';
+import { getErrorMessage, getFieldErrors } from '../utils/apiError';
 import CustomInput from '../components/CustomInput';
 import { Modal, FlatList } from 'react-native';
 import { countries } from '../utils/countries';
@@ -54,8 +55,10 @@ export default function ProfileScreen() {
       setLoading(true);
       await api.put('/user/me', { firstName, lastName, email, birthDate: toBirthDateISO(birthDate), country, telephone });
       Alert.alert('Sucesso', 'Perfil atualizado!');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível atualizar');
+    } catch (e) {
+      const fieldErrors = getFieldErrors(e);
+      if (Object.keys(fieldErrors).length > 0) setErrors(fieldErrors);
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível atualizar'));
     } finally {
       setLoading(false);
     }

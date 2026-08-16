@@ -7,6 +7,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../services/api';
 import { countries } from '../utils/countries';
+import { getErrorMessage } from '../utils/apiError';
 
 import CustomInput from '../components/CustomInput';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,8 +37,8 @@ export default function UserDetailScreen() {
       await api.patch(`/user/${user.id}`, { firstName, lastName, email, birthDate, country, telephone });
       Alert.alert('Sucesso', 'Usuário atualizado!');
       router.back();
-    } catch {
-      Alert.alert('Erro', 'Não foi possível atualizar.');
+    } catch (e) {
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível atualizar.'));
     } finally {
       setLoading(false);
     }
@@ -47,8 +48,9 @@ export default function UserDetailScreen() {
     try {
       await api.put(`/user/${user.id}/role`, { isAdmin: newIsAdmin });
       setIsAdmin(newIsAdmin);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível alterar o cargo.');
+    } catch (e) {
+      // Ex.: "Um administrador não pode alterar o próprio cargo."
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível alterar o cargo.'));
     }
   };
 
