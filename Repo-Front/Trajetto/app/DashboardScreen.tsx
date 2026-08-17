@@ -8,6 +8,7 @@ import {
   statsService, Overview, CountryStats,
   ProfileStats, ItineraryStats, AgeGroupStats,
 } from '../services/statsService';
+import { getErrorMessage } from '../utils/apiError';
 
 const PRIMARY = '#023665';
 const COLORS = ['#023665','#2563EB','#7C3AED','#DB2777','#D97706','#16A34A','#0891B2','#DC2626'];
@@ -103,8 +104,8 @@ export default function DashboardScreen() {
       setItineraries(it);
       setAgeGroups(ag);
       setError('');
-    } catch {
-      setError('Não foi possível carregar os dados.');
+    } catch (e) {
+      setError(getErrorMessage(e, 'Não foi possível carregar os dados.'));
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -16,9 +16,9 @@ public interface UserFacade {
 
     void deleteUser(Long id);
 
-    List<UserResponseDTO> createUser(UserModel userModel) throws Exception;
+    List<UserResponseDTO> createUser(UserModel userModel);
 
-    List<UserResponseDTO> getAllUsers() throws Exception;
+    List<UserResponseDTO> getAllUsers();
 
     UserResponseDTO getUserById(Long id);
 

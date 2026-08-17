@@ -1,11 +1,14 @@
 package com.trajetto.backend.routing.service;
 
+import com.trajetto.backend.exception.ApiErrorCode;
+import com.trajetto.backend.exception.ApiException;
 import com.trajetto.backend.routing.dto.CoordinateDTO;
 import com.trajetto.backend.routing.dto.RouteRequestDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -48,15 +51,31 @@ public class RouteService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                entity,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-        );
+        ResponseEntity<Map<String, Object>> response;
+        try {
+            response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+        } catch (RestClientException e) {
+            throw new ApiException(ApiErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "Não foi possível calcular a rota no momento.", e);
+        }
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> route = (Map<String, Object>) ((List<Object>) response.getBody().get("routes")).get(0);
+        List<Object> routes = response.getBody() != null
+                ? (List<Object>) response.getBody().get("routes")
+                : null;
+
+        if (routes == null || routes.isEmpty()) {
+            throw new ApiException(ApiErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "O serviço de rotas não retornou nenhum trajeto para os pontos informados.");
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> route = (Map<String, Object>) routes.get(0);
         @SuppressWarnings("unchecked")
         Map<String, Object> summary = (Map<String, Object>) route.get("summary");
 

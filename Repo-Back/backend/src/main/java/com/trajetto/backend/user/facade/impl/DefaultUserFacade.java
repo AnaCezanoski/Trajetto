@@ -1,5 +1,8 @@
 package com.trajetto.backend.user.facade.impl;
 
+import com.trajetto.backend.exception.BusinessRuleException;
+import com.trajetto.backend.exception.ForbiddenOperationException;
+import com.trajetto.backend.exception.ResourceNotFoundException;
 import com.trajetto.backend.security.UserToken;
 import com.trajetto.backend.user.dto.UserDTO;
 import com.trajetto.backend.user.dto.UserResponseDTO;
@@ -93,16 +96,16 @@ public class DefaultUserFacade implements UserFacade {
     public void deleteUser(Long id) {
         Long loggedInUserId = getLoggedInUserId();
         if (loggedInUserId.equals(id)) {
-            throw new IllegalStateException("An administrator cannot remove themselves.");
+            throw new ForbiddenOperationException("Um administrador não pode remover a si mesmo.");
         }
 
         UserModel userToDelete = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", id));
 
         if (Boolean.TRUE.equals(userToDelete.getIsAdmin())) {
             long adminCount = userRepository.countByIsAdmin(true);
             if (adminCount <= 1) {
-                throw new IllegalStateException("It is not possible to remove the sole system administrator.");
+                throw new BusinessRuleException("Não é possível remover o único administrador do sistema.");
             }
         }
 
@@ -110,7 +113,7 @@ public class DefaultUserFacade implements UserFacade {
     }
 
     @Override
-    public List<UserResponseDTO> createUser(UserModel userModel) throws Exception {
+    public List<UserResponseDTO> createUser(UserModel userModel) {
 //        if (checkIfUserEmailExists(userModel.getEmail())){
 //            throw new Exception("User email already being used");
 //        }
@@ -131,26 +134,20 @@ public class DefaultUserFacade implements UserFacade {
     }
 
     @Override
-    public List<UserResponseDTO> getAllUsers() throws Exception {
-        try {
-            List<UserResponseDTO> responseDTOList = new ArrayList<>();
+    public List<UserResponseDTO> getAllUsers() {
+        List<UserResponseDTO> responseDTOList = new ArrayList<>();
 
-            List<UserModel> models = this.userService.getAllUsers();
-
-            for (UserModel model : models){
-                responseDTOList.add(populateUserResponseDTO(model));
-            }
-
-            return responseDTOList;
-        }catch (Exception e){
-            throw new Exception("Unable to get users");
+        for (UserModel model : this.userService.getAllUsers()) {
+            responseDTOList.add(populateUserResponseDTO(model));
         }
+
+        return responseDTOList;
     }
 
     @Override
     public UserResponseDTO getUserById(Long id) {
         UserModel user = userService.getUserById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", id));
 
         return populateUserResponseDTO(user);
     }
@@ -159,7 +156,7 @@ public class DefaultUserFacade implements UserFacade {
     public UserResponseDTO updateUserProfile(Long userId, UserUpdateDTO dto) {
 
         UserModel user = userService.getUserById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
 
         if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
         if (dto.getLastName() != null) user.setLastName(dto.getLastName());
@@ -178,16 +175,16 @@ public class DefaultUserFacade implements UserFacade {
     public UserResponseDTO updateUserRole(Long id) {
         Long loggedInUserId = getLoggedInUserId();
         if (loggedInUserId.equals(id)) {
-            throw new IllegalStateException("An administrator cannot change their own position.");
+            throw new ForbiddenOperationException("Um administrador não pode alterar o próprio cargo.");
         }
 
         UserModel userToUpdate = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", id));
 
         if (Boolean.TRUE.equals(userToUpdate.getIsAdmin())) {
             long adminCount = userRepository.countByIsAdmin(true);
             if (adminCount <= 1) {
-                throw new IllegalStateException("It is not possible to change the position of the sole administrator.");
+                throw new BusinessRuleException("Não é possível alterar o cargo do único administrador do sistema.");
             }
         }
 
@@ -195,7 +192,7 @@ public class DefaultUserFacade implements UserFacade {
         userService.updateUserRole(id, !currentIsAdmin);
 
         UserModel updatedUser = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Error searching for user after update."));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", id));
 
         return populateUserResponseDTO(updatedUser);
     }

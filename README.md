@@ -199,6 +199,12 @@ Qualquer mudança de estrutura entra como um arquivo novo `V<n>__descricao.sql`
 naquela pasta, revisado junto com o código. As regras e o passo a passo estão no
 [README das migrações](Repo-Back/backend/src/main/resources/db/migration/README.md).
 
+## Contrato de erro da API
+
+Todas as falhas da API (negócio, validação, segurança e erros inesperados) são devolvidas em um
+único formato JSON, tratado em um ponto central. O formato, os códigos de erro e como usá-los
+estão documentados em [`Repo-Back/backend/docs/CONTRATO-DE-ERRO.md`](Repo-Back/backend/docs/CONTRATO-DE-ERRO.md).
+
 ## Executar o Mobile
 ```bash
 cd Repo-Front/Trajetto

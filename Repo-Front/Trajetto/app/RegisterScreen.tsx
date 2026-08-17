@@ -15,6 +15,7 @@ import {
 } from '../utils/validators';
 import { Modal, FlatList } from 'react-native';
 import { countries } from '../utils/countries';
+import { getErrorMessage, getFieldErrors } from '../utils/apiError';
 
 const PRIMARY = '#006ecf';
 const PLACEHOLDER = '#9ca3af';
@@ -57,8 +58,11 @@ export default function RegisterScreen() {
         params: { email: email }
       });
 
-    } catch {
-      Alert.alert('Erro', 'Não foi possível criar a conta');
+    } catch (e) {
+      // A API devolve os campos rejeitados em details[]: marca cada input e mostra o motivo.
+      const fieldErrors = getFieldErrors(e);
+      if (Object.keys(fieldErrors).length > 0) setErrors(fieldErrors);
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível criar a conta'));
     } finally {
       setLoading(false);
     }

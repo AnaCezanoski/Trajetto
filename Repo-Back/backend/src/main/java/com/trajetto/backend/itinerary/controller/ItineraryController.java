@@ -6,6 +6,7 @@ import com.trajetto.backend.itinerary.dto.ItineraryResponseDTO;
 import com.trajetto.backend.itinerary.dto.PlaceRequestDTO;
 import com.trajetto.backend.itinerary.dto.RatingRequestDTO;
 import com.trajetto.backend.itinerary.service.ItineraryService;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Endpoints de roteiro.
+ * <p>
+ * As falhas (roteiro inexistente, roteiro de outro usuário, dados inválidos) são lançadas pelo
+ * service e traduzidas para o contrato JSON padrão pelo {@code GlobalExceptionHandler}.
+ */
 @Setter
 @Getter
 @NoArgsConstructor
@@ -24,102 +31,59 @@ public class ItineraryController {
     @Autowired
     private ItineraryService itineraryService;
 
-
-
     @PostMapping("/mock/{userId}")
     public ResponseEntity<ItineraryResponseDTO> createMock(@PathVariable Long userId) {
         itineraryService.createItineraryMock(userId);
-        try {
-            ItineraryResponseDTO itinerary = itineraryService.getActiveItinerary(userId);
-            if (itinerary == null) return ResponseEntity.notFound().build();
-            return ResponseEntity.ok(itinerary);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(null);
-        }
+        return ResponseEntity.ok(itineraryService.getActiveItinerary(userId));
     }
 
     @GetMapping("/active/{userId}")
     public ResponseEntity<ItineraryResponseDTO> getActive(@PathVariable Long userId) {
-        try {
-            ItineraryResponseDTO itinerary = itineraryService.getActiveItinerary(userId);
-            if (itinerary == null) return ResponseEntity.noContent().build();
-            return ResponseEntity.ok(itinerary);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(null);
-        }
+        ItineraryResponseDTO itinerary = itineraryService.getActiveItinerary(userId);
+        if (itinerary == null) return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(itinerary);
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<ItineraryResponseDTO> generate(@RequestBody GenerateItineraryRequestDTO req) {
-        try {
-            ItineraryResponseDTO result = itineraryService.generateItinerary(req);
-            return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(400).body(null);
-        }
+    public ResponseEntity<ItineraryResponseDTO> generate(@Valid @RequestBody GenerateItineraryRequestDTO req) {
+        return ResponseEntity.ok(itineraryService.generateItinerary(req));
     }
 
     @GetMapping("/all/{userId}")
     public ResponseEntity<List<ItineraryResponseDTO>> getAll(@PathVariable Long userId) {
-        try {
-            return ResponseEntity.ok(itineraryService.getAllItineraries(userId));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).build();
-        }
+        return ResponseEntity.ok(itineraryService.getAllItineraries(userId));
     }
 
     @PatchMapping("/{itineraryId}/activate/{userId}")
     public ResponseEntity<ItineraryResponseDTO> activate(@PathVariable Long itineraryId, @PathVariable Long userId) {
-        try {
-            return ResponseEntity.ok(itineraryService.activateItinerary(itineraryId, userId));
-        } catch (RuntimeException e) {
-            if ("Forbidden".equals(e.getMessage())) return ResponseEntity.status(403).build();
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(itineraryService.activateItinerary(itineraryId, userId));
     }
 
     @PatchMapping("/{itineraryId}/rating")
     public ResponseEntity<ItineraryResponseDTO> updateRating(
             @PathVariable Long itineraryId,
-            @RequestBody RatingRequestDTO req) {
-        try {
-            return ResponseEntity.ok(itineraryService.updateRating(itineraryId, req));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+            @Valid @RequestBody RatingRequestDTO req) {
+        return ResponseEntity.ok(itineraryService.updateRating(itineraryId, req));
     }
 
     @PatchMapping("/{itineraryId}/date")
     public ResponseEntity<ItineraryResponseDTO> updateDate(
             @PathVariable Long itineraryId,
-            @RequestBody DateRequestDTO req) {
-        try {
-            return ResponseEntity.ok(itineraryService.updateDate(itineraryId, req));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+            @Valid @RequestBody DateRequestDTO req) {
+        return ResponseEntity.ok(itineraryService.updateDate(itineraryId, req));
     }
 
     @PatchMapping("/{itineraryId}/place/{orderIndex}")
     public ResponseEntity<ItineraryResponseDTO> replacePlace(
             @PathVariable Long itineraryId,
             @PathVariable Integer orderIndex,
-            @RequestBody PlaceRequestDTO req) {
-        try {
-            return ResponseEntity.ok(itineraryService.replacePlace(itineraryId, orderIndex, req));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+            @Valid @RequestBody PlaceRequestDTO req) {
+        return ResponseEntity.ok(itineraryService.replacePlace(itineraryId, orderIndex, req));
     }
 
     @DeleteMapping("/{itineraryId}/user/{userId}")
     public ResponseEntity<Void> delete(@PathVariable Long itineraryId, @PathVariable Long userId) {
-        try {
-            itineraryService.deleteItinerary(itineraryId, userId);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            if (e.getMessage().equals("Forbidden")) return ResponseEntity.status(403).build();
-            return ResponseEntity.notFound().build();
-        }
+        itineraryService.deleteItinerary(itineraryId, userId);
+        return ResponseEntity.noContent().build();
     }
 }

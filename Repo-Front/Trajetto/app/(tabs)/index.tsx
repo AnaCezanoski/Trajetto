@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { getErrorMessage } from '../../utils/apiError';
 import { isPlacePast } from '../utils/isPlacePast';
 import { Itinerary, useItineraryStore } from './../../hooks/itineraryStore';
 import { Platform } from 'react-native';
@@ -204,8 +205,8 @@ export default function RoteirosTab() {
             try {
               setDeleting(id);
               await deleteItinerary(id, user.id);
-            } catch {
-              Alert.alert('Erro', 'Não foi possível excluir o roteiro.');
+            } catch (e) {
+              Alert.alert('Erro', getErrorMessage(e, 'Não foi possível excluir o roteiro.'));
             } finally {
               setDeleting(null);
             }
@@ -230,8 +231,8 @@ export default function RoteirosTab() {
             try {
               await Promise.all([...selectedIds].map(id => deleteItinerary(id, user.id)));
               exitSelectMode();
-            } catch {
-              Alert.alert('Erro', 'Não foi possível excluir alguns roteiros.');
+            } catch (e) {
+              Alert.alert('Erro', getErrorMessage(e, 'Não foi possível excluir alguns roteiros.'));
             } finally {
               setBulkDeleting(false);
             }
@@ -246,8 +247,8 @@ export default function RoteirosTab() {
     try {
       setActivating(id);
       await activateItinerary(id, user.id);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível ativar o roteiro.');
+    } catch (e) {
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível ativar o roteiro.'));
     } finally {
       setActivating(null);
     }

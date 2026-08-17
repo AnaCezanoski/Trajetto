@@ -1,5 +1,8 @@
 package com.trajetto.backend.user.service;
 
+import com.trajetto.backend.exception.BusinessRuleException;
+import com.trajetto.backend.exception.InvalidRequestException;
+import com.trajetto.backend.exception.ResourceNotFoundException;
 import com.trajetto.backend.user.model.PasswordResetToken;
 import com.trajetto.backend.user.model.UserModel;
 import com.trajetto.backend.user.repository.PasswordResetTokenRepository;
@@ -25,7 +28,7 @@ public class PasswordResetService {
         UserModel user = userRepository.findByEmail(email);
 
         if (user == null) {
-            throw new RuntimeException("User not found");
+            throw new ResourceNotFoundException("Nenhuma conta encontrada para o e-mail informado.");
         }
 
         String code = String.valueOf((int)(Math.random() * 900000) + 100000);
@@ -59,14 +62,14 @@ public class PasswordResetService {
     public void resetPassword(String email, String code, String newPassword) {
         PasswordResetToken reset = tokenRepository
                 .findTopByUserEmailAndCodeOrderByExpiresAtDesc(email, code)
-                .orElseThrow(() -> new RuntimeException("Invalid code"));
+                .orElseThrow(() -> new InvalidRequestException("Código de redefinição inválido."));
 
         if (reset.isUsed()) {
-            throw new RuntimeException("Code already used");
+            throw new BusinessRuleException("Este código já foi utilizado. Solicite um novo.");
         }
 
         if (reset.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Code expired");
+            throw new BusinessRuleException("Este código expirou. Solicite um novo.");
         }
 
         UserModel user = reset.getUser();
