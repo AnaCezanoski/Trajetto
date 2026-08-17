@@ -7,6 +7,7 @@ import {
 import { api } from '../services/api';
 import { useRouter } from 'expo-router';
 import { validateEmail } from '../utils/validators';
+import { getErrorMessage } from '../utils/apiError';
 import CustomInput from '../components/CustomInput';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../assets/appImgs/logo.svg';
@@ -29,9 +30,8 @@ export default function ForgotPasswordScreen() {
       Alert.alert('Código enviado!', 'Verifique seu e-mail e insira o código na próxima tela.', [
         { text: 'OK', onPress: () => router.push({ pathname: '/ResetPasswordScreen', params: { email: email.trim().toLowerCase() } }) }
       ]);
-    } catch (error: any) {
-      console.log('ERROR FORGOT:', error?.response?.data);
-      Alert.alert('Erro', 'Não foi possível enviar o código. Verifique se o e-mail está cadastrado.');
+    } catch (error) {
+      Alert.alert('Erro', getErrorMessage(error, 'Não foi possível enviar o código. Verifique se o e-mail está cadastrado.'));
     } finally {
       setLoading(false);
     }

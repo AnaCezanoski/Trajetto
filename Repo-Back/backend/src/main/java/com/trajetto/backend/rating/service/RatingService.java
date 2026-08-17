@@ -1,5 +1,8 @@
 package com.trajetto.backend.rating.service;
 
+import com.trajetto.backend.exception.ForbiddenOperationException;
+import com.trajetto.backend.exception.ResourceConflictException;
+import com.trajetto.backend.exception.ResourceNotFoundException;
 import com.trajetto.backend.rating.model.RatingModel;
 import com.trajetto.backend.rating.repository.RatingRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +34,7 @@ public class RatingService {
 
         ratingRepository.findByTouristSpotXidAndUserId(touristSpotXid, userId)
                 .ifPresent(existing -> {
-                    throw new RuntimeException("User already rated this place");
+                    throw new ResourceConflictException("Este usuário já avaliou este local.");
                 });
 
         RatingModel rating = new RatingModel();
@@ -51,10 +54,10 @@ public class RatingService {
                                String newComment) {
 
         RatingModel rating = ratingRepository.findById(ratingId)
-                .orElseThrow(() -> new RuntimeException("Rating not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação", ratingId));
 
         if (!rating.getUserId().equals(userId)) {
-            throw new RuntimeException("Not allowed to update this rating");
+            throw new ForbiddenOperationException("Esta avaliação pertence a outro usuário.");
         }
 
         rating.setRating(newRating);
@@ -66,10 +69,10 @@ public class RatingService {
     public void deleteRating(Long ratingId, Long userId) {
 
         RatingModel rating = ratingRepository.findById(ratingId)
-                .orElseThrow(() -> new RuntimeException("Rating not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação", ratingId));
 
         if (!rating.getUserId().equals(userId)) {
-            throw new RuntimeException("Not allowed to delete this rating");
+            throw new ForbiddenOperationException("Esta avaliação pertence a outro usuário.");
         }
 
         ratingRepository.delete(rating);

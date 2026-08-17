@@ -10,6 +10,8 @@ import com.trajetto.backend.itinerary.dto.PlaceResponseDTO;
 import com.trajetto.backend.itinerary.dto.RatingRequestDTO;
 import com.trajetto.backend.itinerary.model.ItineraryModel;
 import com.trajetto.backend.itinerary.model.PlaceModel;
+import com.trajetto.backend.exception.ForbiddenOperationException;
+import com.trajetto.backend.exception.ResourceNotFoundException;
 import com.trajetto.backend.itinerary.repository.ItineraryRepository;
 import com.trajetto.backend.user.model.UserModel;
 import com.trajetto.backend.user.repository.UserRepository;
@@ -38,7 +40,7 @@ public class ItineraryService {
 
     public ItineraryModel createItineraryMock(Long userId) {
         UserModel user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
 
         List<ItineraryModel> activeItineraries = itineraryRepository.findByUserAndActiveTrue(user);
         for (ItineraryModel old : activeItineraries) {
@@ -101,7 +103,7 @@ public class ItineraryService {
 
     public ItineraryResponseDTO getActiveItinerary(Long userId) {
         UserModel user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
 
         List<ItineraryModel> activeItineraries = itineraryRepository.findByUserAndActiveTrue(user);
 
@@ -113,7 +115,7 @@ public class ItineraryService {
 
     public ItineraryResponseDTO generateItinerary(GenerateItineraryRequestDTO req) {
         UserModel user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", req.getUserId()));
 
         String profile = user.getTravelerProfile();
         boolean hasProfile = profile != null && !profile.equals("SKIPPED");
@@ -212,7 +214,7 @@ public class ItineraryService {
 
     public List<ItineraryResponseDTO> getAllItineraries(Long userId) {
         UserModel user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
         return itineraryRepository.findByUserOrderByStartDateDesc(user)
                 .stream()
                 .map(this::toDTO)
@@ -221,11 +223,11 @@ public class ItineraryService {
 
     public ItineraryResponseDTO activateItinerary(Long itineraryId, Long userId) {
         UserModel user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
         ItineraryModel target = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Roteiro", itineraryId));
         if (!target.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Forbidden");
+            throw new ForbiddenOperationException("Este roteiro pertence a outro usuário.");
         }
         itineraryRepository.findByUserOrderByStartDateDesc(user).forEach(it -> {
             it.setActive(it.getId().equals(itineraryId));
@@ -237,7 +239,7 @@ public class ItineraryService {
 
     public ItineraryResponseDTO updateRating(Long itineraryId, RatingRequestDTO req) {
         ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Roteiro", itineraryId));
         itinerary.setRating(req.getRating());
         itinerary.setRatingDescription(req.getRatingDescription());
         return toDTO(itineraryRepository.save(itinerary));
@@ -245,19 +247,19 @@ public class ItineraryService {
 
     public ItineraryResponseDTO updateDate(Long itineraryId, DateRequestDTO req) {
         ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Roteiro", itineraryId));
         itinerary.setDate(req.getDate());
         return toDTO(itineraryRepository.save(itinerary));
     }
 
     public ItineraryResponseDTO replacePlace(Long itineraryId, Integer orderIndex, PlaceRequestDTO req) {
         ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Roteiro", itineraryId));
 
         PlaceModel place = itinerary.getPlaces().stream()
                 .filter(p -> p.getOrderIndex().equals(orderIndex))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Place not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Local de índice " + orderIndex + " não encontrado no roteiro."));
 
         place.setName(req.getName());
         place.setAddress(req.getAddress());
@@ -275,9 +277,9 @@ public class ItineraryService {
 
     public void deleteItinerary(Long itineraryId, Long userId) {
         ItineraryModel itinerary = itineraryRepository.findById(itineraryId)
-                .orElseThrow(() -> new RuntimeException("Itinerary not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Roteiro", itineraryId));
         if (!itinerary.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Forbidden");
+            throw new ForbiddenOperationException("Este roteiro pertence a outro usuário.");
         }
         itineraryRepository.delete(itinerary);
     }

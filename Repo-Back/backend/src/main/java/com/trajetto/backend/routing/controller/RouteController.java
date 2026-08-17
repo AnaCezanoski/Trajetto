@@ -3,6 +3,7 @@ package com.trajetto.backend.routing.controller;
 
 import com.trajetto.backend.routing.dto.RouteRequestDTO;
 import com.trajetto.backend.routing.service.RouteService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +21,7 @@ public class RouteController {
     }
 
     @PostMapping
-    public ResponseEntity<?> getRoute(@RequestBody RouteRequestDTO request) {
+    public ResponseEntity<?> getRoute(@Valid @RequestBody RouteRequestDTO request) {
         return ResponseEntity.ok(routeService.getRoute(request));
     }
 }

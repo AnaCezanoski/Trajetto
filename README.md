@@ -185,6 +185,12 @@ Certifique-se de ter o MySQL rodando e as credenciais configuradas em `src/main/
 http://localhost:8080
 ```
 
+## Contrato de erro da API
+
+Todas as falhas da API (negócio, validação, segurança e erros inesperados) são devolvidas em um
+único formato JSON, tratado em um ponto central. O formato, os códigos de erro e como usá-los
+estão documentados em [`Repo-Back/backend/docs/CONTRATO-DE-ERRO.md`](Repo-Back/backend/docs/CONTRATO-DE-ERRO.md).
+
 ## Executar o Mobile
 ```bash
 cd Repo-Front/Trajetto

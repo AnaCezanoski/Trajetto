@@ -14,6 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
 import { validateEmail } from '../utils/validators';
+import { getErrorMessage } from '../utils/apiError';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import Logo from '../assets/appImgs/logo.svg';
@@ -43,11 +44,13 @@ export default function LoginScreen() {
     }
 
     setErrors({});
+    setError('');
     try {
       setLoading(true);
       await login({ email, password });
-    } catch {
-      setError('E-mail ou senha inválidos.');
+    } catch (e) {
+      // Mostra a mensagem da API: credenciais inválidas, conta não verificada, etc.
+      setError(getErrorMessage(e, 'E-mail ou senha inválidos.'));
     } finally {
       setLoading(false);
     }

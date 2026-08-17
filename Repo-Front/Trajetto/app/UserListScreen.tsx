@@ -4,6 +4,7 @@ import {
   TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
 import { api } from '../services/api';
+import { getErrorMessage } from '../utils/apiError';
 import { User } from '../types/user';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
@@ -22,8 +23,8 @@ export default function UserListScreen() {
       setLoading(true);
       const res = await api.get('/user');
       setUsers(res.data);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível carregar os usuários.');
+    } catch (e) {
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível carregar os usuários.'));
     } finally {
       setLoading(false);
     }
@@ -38,8 +39,13 @@ export default function UserListScreen() {
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir', style: 'destructive', onPress: async () => {
-          await api.delete(`/user/${id}`);
-          fetchUsers();
+          try {
+            await api.delete(`/user/${id}`);
+            fetchUsers();
+          } catch (e) {
+            // Ex.: "Um administrador não pode remover a si mesmo."
+            Alert.alert('Erro', getErrorMessage(e, 'Não foi possível excluir o usuário.'));
+          }
         },
       },
     ]);

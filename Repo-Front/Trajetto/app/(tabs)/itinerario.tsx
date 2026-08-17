@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Places, useItineraryStore } from '@/hooks/itineraryStore';
 import { Place, placesService } from '@/services/placesService';
 import { RatingService, RatingSummary } from '@/services/ratingService';
+import { getErrorMessage } from '@/utils/apiError';
 import StarRating from '@/components/Rating';
 import CustomButton from '@/components/CustomButton';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
@@ -467,8 +468,8 @@ export default function ItinerarioTab() {
     setAlternatives([]);
     try {
       await replacePlace(swipedPlace.orderIndex, newPlace);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar a alteração.');
+    } catch (e) {
+      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível salvar a alteração.'));
     }
   }, [swipedPlace, replacePlace]);
 
@@ -865,7 +866,8 @@ export default function ItinerarioTab() {
                             const ratings = await RatingService.getByPlace(selectedPlace.xid);
                             setAllRatings(ratings);
                           } catch (e) {
-                            console.error('Erro ao salvar avaliação:', e);
+                            // Ex.: "Este usuário já avaliou este local." (409)
+                            Alert.alert('Erro', getErrorMessage(e, 'Não foi possível salvar a avaliação.'));
                           }
                         }}
                       >
@@ -910,7 +912,9 @@ export default function ItinerarioTab() {
                                           setRatingData(summary);
                                           const ratings = await RatingService.getByPlace(selectedPlace.xid);
                                           setAllRatings(ratings);
-                                        } catch (e) { console.error(e); }
+                                        } catch (e) {
+                                          Alert.alert('Erro', getErrorMessage(e, 'Não foi possível excluir a avaliação.'));
+                                        }
                                       },
                                     },
                                   ]);
