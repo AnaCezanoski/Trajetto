@@ -52,4 +52,5 @@ jobs:
           SPRING_PROFILES_ACTIVE: test
           DB_USERNAME: root
           DB_PASSWORD: test
+          ORS_API_KEY: ci-dummy-key
         run: ./mvnw -B clean verify
