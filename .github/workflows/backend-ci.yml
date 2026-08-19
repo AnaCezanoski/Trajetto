@@ -1,0 +1,51 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [ dev, test, prod, main ]
+    paths:
+      - 'Repo-Back/backend/**'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches: [ dev, test, prod, main ]
+    paths:
+      - 'Repo-Back/backend/**'
+
+jobs:
+  build:
+    name: Build backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Repo-Back/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Grant execute permission to mvnw
+        run: chmod +x mvnw
+
+      - name: Determine environment profile
+        id: profile
+        run: |
+          branch="${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}"
+          case "$branch" in
+            dev) echo "profile=dev" >> "$GITHUB_OUTPUT" ;;
+            test) echo "profile=test" >> "$GITHUB_OUTPUT" ;;
+            prod) echo "profile=prod" >> "$GITHUB_OUTPUT" ;;
+            main) echo "profile=prod" >> "$GITHUB_OUTPUT" ;;
+            *) echo "profile=dev" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Build with Maven
+        env:
+          SPRING_PROFILES_ACTIVE: ${{ steps.profile.outputs.profile }}
+        run: ./mvnw -B clean compile
