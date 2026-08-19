@@ -13,11 +13,25 @@ on:
 
 jobs:
   build:
-    name: Build backend
+    name: Build and test backend
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: Repo-Back/backend
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: trajetto_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout code
@@ -33,18 +47,9 @@ jobs:
       - name: Grant execute permission to mvnw
         run: chmod +x mvnw
 
-      - name: Determine environment profile
-        id: profile
-        run: |
-          branch="${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}"
-          case "$branch" in
-            dev) echo "profile=dev" >> "$GITHUB_OUTPUT" ;;
-            test) echo "profile=test" >> "$GITHUB_OUTPUT" ;;
-            prod) echo "profile=prod" >> "$GITHUB_OUTPUT" ;;
-            *) echo "profile=dev" >> "$GITHUB_OUTPUT" ;;
-          esac
-
-      - name: Build with Maven
+      - name: Build and run tests
         env:
-          SPRING_PROFILES_ACTIVE: ${{ steps.profile.outputs.profile }}
-        run: ./mvnw -B clean compile
+          SPRING_PROFILES_ACTIVE: test
+          DB_USERNAME: root
+          DB_PASSWORD: test
+        run: ./mvnw -B clean verify
