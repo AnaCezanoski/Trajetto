@@ -1,4 +1,4 @@
-# Migrações de banco de dados
+# Migrações de banco de dados!
 
 O esquema do banco do Trajetto é versionado com **Flyway**. A aplicação não cria
 nem altera tabelas: ela apenas confere, na inicialização, se o banco está de
