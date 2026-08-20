@@ -6,11 +6,16 @@ import jakarta.validation.ConstraintViolationException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -150,18 +155,45 @@ public class GlobalExceptionHandler {
 
     // ─── Segurança ────────────────────────────────────────────────────────────
 
+    /**
+     * Falha de autenticação. O código distingue o motivo — credenciais erradas no login, sessão
+     * vencida ou sessão inválida — para que o aplicativo saiba se deve mostrar "senha incorreta"
+     * ou descartar a sessão salva e pedir login de novo.
+     */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex,
                                                         HttpServletRequest request) {
-        return build(ApiErrorCode.INVALID_CREDENTIALS, ApiErrorCode.INVALID_CREDENTIALS.getDefaultMessage(),
-                request, List.of(), ex);
+        ApiErrorCode code = authenticationErrorCode(ex);
+        return build(code, code.getDefaultMessage(), request, List.of(), ex);
     }
 
+    /**
+     * Autorização negada, normalmente por {@code @PreAuthorize}. Sem usuário autenticado a falha
+     * é de autenticação (401) e não de permissão (403): responder 403 faria o aplicativo tratar
+     * como "sem acesso" um caso em que bastava entrar na conta.
+     */
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex,
                                                       HttpServletRequest request) {
-        return build(ApiErrorCode.ACCESS_DENIED, ApiErrorCode.ACCESS_DENIED.getDefaultMessage(),
-                request, List.of(), ex);
+        ApiErrorCode code = isAuthenticated() ? ApiErrorCode.ACCESS_DENIED : ApiErrorCode.UNAUTHENTICATED;
+        return build(code, code.getDefaultMessage(), request, List.of(), ex);
+    }
+
+    private ApiErrorCode authenticationErrorCode(AuthenticationException ex) {
+        if (ex instanceof InvalidSessionException invalidSession) {
+            return invalidSession.getErrorCode();
+        }
+        if (ex instanceof BadCredentialsException) {
+            return ApiErrorCode.INVALID_CREDENTIALS;
+        }
+        return ApiErrorCode.UNAUTHENTICATED;
+    }
+
+    private boolean isAuthenticated() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.isAuthenticated()
+                && !(authentication instanceof AnonymousAuthenticationToken);
     }
 
     // ─── Persistência ─────────────────────────────────────────────────────────
@@ -178,7 +210,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException ex,
                                                         HttpServletRequest request) {
-        ApiErrorCode code = fromStatus(HttpStatus.resolve(ex.getStatusCode().value()));
+        ApiErrorCode code = ApiErrorCode.fromStatus(HttpStatus.resolve(ex.getStatusCode().value()));
         String message = ex.getReason() != null ? ex.getReason() : code.getDefaultMessage();
         return build(code, message, request, List.of(), ex);
     }
@@ -210,24 +242,14 @@ public class GlobalExceptionHandler {
                     apiError.status(), apiError.code(), ex.getMessage());
         }
 
+        if (apiError.status() == HttpStatus.UNAUTHORIZED.value()) {
+            // Exigido pelo HTTP em respostas 401; identifica o esquema e o motivo da recusa.
+            return ResponseEntity.status(apiError.status())
+                    .header(HttpHeaders.WWW_AUTHENTICATE, ApiErrorResponseWriter.bearerChallenge(code))
+                    .body(apiError);
+        }
+
         return ResponseEntity.status(apiError.status()).body(apiError);
     }
 
-    private ApiErrorCode fromStatus(HttpStatus status) {
-        if (status == null) {
-            return ApiErrorCode.INTERNAL_ERROR;
-        }
-        return switch (status) {
-            case BAD_REQUEST -> ApiErrorCode.INVALID_PARAMETER;
-            case UNAUTHORIZED -> ApiErrorCode.UNAUTHENTICATED;
-            case FORBIDDEN -> ApiErrorCode.ACCESS_DENIED;
-            case NOT_FOUND -> ApiErrorCode.RESOURCE_NOT_FOUND;
-            case METHOD_NOT_ALLOWED -> ApiErrorCode.METHOD_NOT_ALLOWED;
-            case CONFLICT -> ApiErrorCode.RESOURCE_CONFLICT;
-            case UNSUPPORTED_MEDIA_TYPE -> ApiErrorCode.UNSUPPORTED_MEDIA_TYPE;
-            case UNPROCESSABLE_ENTITY -> ApiErrorCode.BUSINESS_RULE_VIOLATION;
-            case BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT -> ApiErrorCode.EXTERNAL_SERVICE_ERROR;
-            default -> ApiErrorCode.INTERNAL_ERROR;
-        };
-    }
 }

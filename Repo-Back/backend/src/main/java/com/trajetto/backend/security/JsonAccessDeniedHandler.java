@@ -11,7 +11,13 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-/** Devolve 403 no contrato JSON padrão quando o usuário autenticado não tem permissão. */
+/**
+ * Devolve 403 no contrato JSON padrão quando o usuário está autenticado, mas não tem permissão
+ * para a operação.
+ * <p>
+ * A resposta não diz qual permissão faltou: isso revelaria a estrutura de autorização da API a
+ * quem não deveria conhecê-la. O detalhe fica no log, alcançável pelo {@code traceId}.
+ */
 @Component
 @RequiredArgsConstructor
 public class JsonAccessDeniedHandler implements AccessDeniedHandler {

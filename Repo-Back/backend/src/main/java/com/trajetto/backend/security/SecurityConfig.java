@@ -27,14 +27,14 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 )
 public class SecurityConfig {
 
-    private JwtTokenFilter jwtTokenFilter;
+    private final Jwt jwt;
     private final JsonAuthenticationEntryPoint authenticationEntryPoint;
     private final JsonAccessDeniedHandler accessDeniedHandler;
 
-    public SecurityConfig(JwtTokenFilter jwtTokenFilter,
+    public SecurityConfig(Jwt jwt,
                           JsonAuthenticationEntryPoint authenticationEntryPoint,
                           JsonAccessDeniedHandler accessDeniedHandler) {
-        this.jwtTokenFilter = jwtTokenFilter;
+        this.jwt = jwt;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
     }
@@ -46,12 +46,16 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
                 .csrf(csrf -> csrf.disable())
-                .addFilterAfter(jwtTokenFilter, BasicAuthenticationFilter.class)
+                // Instanciado aqui, e não injetado: como bean, o Spring Boot também o
+                // registraria na cadeia de filtros do servlet, fora do controle da segurança.
+                .addFilterAfter(new JwtTokenFilter(jwt), BasicAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        // Despacho interno de erro; quem responde é o ApiErrorController.
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/address/**").permitAll()
                         .requestMatchers("/user/validateEmail/{email}").permitAll()
