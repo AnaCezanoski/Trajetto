@@ -4,19 +4,26 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +40,11 @@ class GlobalExceptionHandlerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    @AfterEach
+    void clearContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -70,9 +82,34 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("Acesso negado pelo Spring Security retorna 403 no contrato padrão")
+    @DisplayName("Usuário autenticado sem permissão retorna 403 no contrato padrão")
     void accessDenied() throws Exception {
+        authenticate();
+
         assertContract(mockMvc.perform(get("/test/denied")), 403, "ACCESS_DENIED", "/test/denied", "GET");
+    }
+
+    @Test
+    @DisplayName("Sem usuário autenticado, acesso negado vira 401: falta login, não permissão")
+    void accessDeniedSemAutenticacao() throws Exception {
+        assertContract(mockMvc.perform(get("/test/denied")), 401, "UNAUTHENTICATED", "/test/denied", "GET");
+    }
+
+    @Test
+    @DisplayName("Sessão expirada retorna 401 SESSION_EXPIRED no contrato padrão")
+    void sessionExpired() throws Exception {
+        assertContract(mockMvc.perform(get("/test/expired-session")), 401, "SESSION_EXPIRED",
+                "/test/expired-session", "GET")
+                .andExpect(jsonPath("$.message").value("Sua sessão expirou. Entre novamente para continuar."))
+                .andExpect(header().string("WWW-Authenticate", containsString("error=\"invalid_token\"")));
+    }
+
+    @Test
+    @DisplayName("Sessão inválida retorna 401 INVALID_SESSION no contrato padrão")
+    void invalidSession() throws Exception {
+        assertContract(mockMvc.perform(get("/test/invalid-session")), 401, "INVALID_SESSION",
+                "/test/invalid-session", "GET")
+                .andExpect(jsonPath("$.message").value("Sua sessão não é mais válida. Entre novamente para continuar."));
     }
 
     @Test
@@ -112,6 +149,12 @@ class GlobalExceptionHandlerTest {
     @DisplayName("Parâmetro com tipo incompatível retorna 400 no mesmo contrato")
     void typeMismatch() throws Exception {
         assertContract(mockMvc.perform(get("/test/param?id=abc")), 400, "INVALID_PARAMETER", "/test/param", "GET");
+    }
+
+    /** Coloca um usuário autenticado no contexto, como faria o filtro de token. */
+    private void authenticate() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("ana", null, List.of()));
     }
 
     /** Verifica os campos obrigatórios do contrato, presentes em toda resposta de erro. */
@@ -166,6 +209,16 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/denied")
         void denied() {
             throw new AccessDeniedException("Acesso negado");
+        }
+
+        @GetMapping("/expired-session")
+        void expiredSession() {
+            throw new InvalidSessionException(ApiErrorCode.SESSION_EXPIRED, "Token expirado em 01/01/2026.");
+        }
+
+        @GetMapping("/invalid-session")
+        void invalidSession() {
+            throw new InvalidSessionException(ApiErrorCode.INVALID_SESSION, "Assinatura do token não confere.");
         }
 
         @GetMapping("/boom")

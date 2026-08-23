@@ -22,8 +22,14 @@ public enum ApiErrorCode {
     /** Credenciais incorretas na autenticação. */
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos."),
 
-    /** Requisição sem token válido em recurso protegido. */
+    /** Requisição sem token em recurso protegido. */
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Autenticação necessária para acessar este recurso."),
+
+    /** Token apresentado já passou da validade — a sessão precisa ser refeita. */
+    SESSION_EXPIRED(HttpStatus.UNAUTHORIZED, "Sua sessão expirou. Entre novamente para continuar."),
+
+    /** Token corrompido, sem assinatura válida ou emitido por outro servidor. */
+    INVALID_SESSION(HttpStatus.UNAUTHORIZED, "Sua sessão não é mais válida. Entre novamente para continuar."),
 
     /** Usuário autenticado sem permissão para a operação. */
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "Você não tem permissão para executar esta operação."),
@@ -66,5 +72,28 @@ public enum ApiErrorCode {
 
     public String getDefaultMessage() {
         return defaultMessage;
+    }
+
+    /**
+     * Código correspondente a um status HTTP, usado quando a falha chega apenas com o status,
+     * sem exceção tipada — caso do {@code ResponseStatusException} e do despacho interno para
+     * {@code /error}.
+     */
+    public static ApiErrorCode fromStatus(HttpStatus status) {
+        if (status == null) {
+            return INTERNAL_ERROR;
+        }
+        return switch (status) {
+            case BAD_REQUEST -> INVALID_PARAMETER;
+            case UNAUTHORIZED -> UNAUTHENTICATED;
+            case FORBIDDEN -> ACCESS_DENIED;
+            case NOT_FOUND -> RESOURCE_NOT_FOUND;
+            case METHOD_NOT_ALLOWED -> METHOD_NOT_ALLOWED;
+            case CONFLICT -> RESOURCE_CONFLICT;
+            case UNSUPPORTED_MEDIA_TYPE -> UNSUPPORTED_MEDIA_TYPE;
+            case UNPROCESSABLE_ENTITY -> BUSINESS_RULE_VIOLATION;
+            case BAD_GATEWAY, SERVICE_UNAVAILABLE, GATEWAY_TIMEOUT -> EXTERNAL_SERVICE_ERROR;
+            default -> INTERNAL_ERROR;
+        };
     }
 }

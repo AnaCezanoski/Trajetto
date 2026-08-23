@@ -9,6 +9,8 @@ export type ApiErrorCode =
   | 'INVALID_PARAMETER'
   | 'INVALID_CREDENTIALS'
   | 'UNAUTHENTICATED'
+  | 'SESSION_EXPIRED'
+  | 'INVALID_SESSION'
   | 'ACCESS_DENIED'
   | 'RESOURCE_NOT_FOUND'
   | 'ENDPOINT_NOT_FOUND'
@@ -90,6 +92,20 @@ export const getErrorMessage = (error: unknown, fallback: string = DEFAULT_MESSA
   }
 
   return fallback;
+};
+
+// Códigos em que a sessão guardada no aparelho deixou de servir: o token venceu, não confere,
+// ou nem chegou a ser enviado. INVALID_CREDENTIALS fica de fora de propósito — é senha errada
+// no login, e deslogar por causa dele apagaria a sessão de quem nem chegou a entrar.
+const SESSION_ERROR_CODES = ['UNAUTHENTICATED', 'SESSION_EXPIRED', 'INVALID_SESSION'];
+
+/** A sessão salva não vale mais: o app deve descartá-la e mandar o usuário para o login. */
+export const isSessionError = (error: unknown): boolean => {
+  const code = getErrorCode(error);
+  if (code) return SESSION_ERROR_CODES.includes(code);
+
+  // Resposta fora do contrato (um proxy no caminho, por exemplo): resta o status.
+  return getErrorStatus(error) === 401;
 };
 
 /**

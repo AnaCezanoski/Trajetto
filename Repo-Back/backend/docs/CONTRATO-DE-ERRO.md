@@ -57,7 +57,9 @@ Erro de validação (`details` presente):
 | `MALFORMED_REQUEST`       | 400  | JSON malformado ou incompatível                            |
 | `INVALID_PARAMETER`       | 400  | Parâmetro ausente ou com tipo incompatível                 |
 | `INVALID_CREDENTIALS`     | 401  | E-mail ou senha incorretos no login                        |
-| `UNAUTHENTICATED`         | 401  | Requisição sem token válido em recurso protegido           |
+| `UNAUTHENTICATED`         | 401  | Requisição sem token em recurso protegido                  |
+| `SESSION_EXPIRED`         | 401  | Token venceu — a sessão precisa ser refeita                |
+| `INVALID_SESSION`         | 401  | Token corrompido, adulterado ou de outro emissor           |
 | `ACCESS_DENIED`           | 403  | Usuário autenticado sem permissão para a operação          |
 | `RESOURCE_NOT_FOUND`      | 404  | Recurso solicitado não existe                              |
 | `ENDPOINT_NOT_FOUND`      | 404  | Rota inexistente                                           |
@@ -87,6 +89,9 @@ Pacote `com.trajetto.backend.exception`:
 - **`ApiErrorResponseWriter`** + `JsonAuthenticationEntryPoint` / `JsonAccessDeniedHandler`
   (pacote `security`) — 401 e 403 acontecem na cadeia de filtros do Spring Security, antes do
   `DispatcherServlet`, e por isso são escritos diretamente na resposta usando o mesmo contrato.
+- **`ApiErrorController`** — responde `/error`, para onde o container despacha o que falha fora
+  dos controllers (em um filtro, ou via `response.sendError()`). Sem ele essas respostas sairiam
+  no formato padrão do Spring Boot, diferente do resto da API.
 
 ### Como lançar um erro
 
@@ -111,6 +116,55 @@ automaticamente uma resposta `VALIDATION_ERROR` com a lista de campos em `detail
 public ResponseEntity<List<UserResponseDTO>> createUser(@Valid @RequestBody UserDTO userDTO) { ... }
 ```
 
+## Respostas de acesso negado e de sessão inválida
+
+Falhas de segurança não passam pelo `GlobalExceptionHandler`: o Spring Security as resolve na
+cadeia de filtros, antes do `DispatcherServlet`. Elas seguem o mesmo contrato mesmo assim, e o
+`code` distingue o que o aplicativo deve fazer — não basta saber que deu 401.
+
+| Situação                                              | `code`              | O que o app faz                       |
+|-------------------------------------------------------|---------------------|---------------------------------------|
+| Recurso protegido, requisição sem token                | `UNAUTHENTICATED`   | Pede login                            |
+| Token venceu (48 h)                                    | `SESSION_EXPIRED`   | Descarta a sessão salva e pede login  |
+| Token corrompido, adulterado ou de outro emissor       | `INVALID_SESSION`   | Descarta a sessão salva e pede login  |
+| E-mail ou senha errados no `POST /user/login`          | `INVALID_CREDENTIALS` | Mostra o erro **sem** deslogar      |
+| Autenticado, mas sem a permissão exigida pela rota     | `ACCESS_DENIED`     | Informa; entrar de novo não resolve   |
+
+```json
+{
+  "timestamp": "2026-08-20T09:12:44.517-03:00",
+  "status": 401,
+  "error": "Unauthorized",
+  "code": "SESSION_EXPIRED",
+  "message": "Sua sessão expirou. Entre novamente para continuar.",
+  "path": "/user/me",
+  "method": "GET",
+  "traceId": "1d7ea0c4"
+}
+```
+
+Como funciona, do token à resposta:
+
+1. `Jwt.extract` lê o cabeçalho `Authorization`. Sem cabeçalho, devolve `null` — requisição
+   anônima, legítima nos endpoints públicos. Com um token que não vale, lança
+   `InvalidSessionException` carregando `SESSION_EXPIRED` ou `INVALID_SESSION`.
+2. `JwtTokenFilter` **não** responde na hora: anota o motivo na requisição e segue a cadeia.
+   É o que permite ao aplicativo refazer o login carregando um token vencido — se o filtro
+   cortasse ali, `POST /user/login` também morreria com 401.
+3. Se o endpoint exigir autenticação, o `JsonAuthenticationEntryPoint` lê o motivo anotado e
+   responde no contrato, com o código específico. Se o usuário estiver autenticado mas sem
+   permissão, quem responde é o `JsonAccessDeniedHandler`, com 403.
+
+Detalhes que a resposta **não** traz, de propósito: por que o token foi recusado (assinatura,
+formato, emissor) e qual permissão faltava. Isso ajudaria quem estivesse sondando a API; fica
+no log, alcançável pelo `traceId`.
+
+Toda resposta 401 acompanha o cabeçalho `WWW-Authenticate`, como manda o HTTP:
+
+```
+WWW-Authenticate: Bearer realm="trajetto-api", error="invalid_token", error_description="The access token expired"
+```
+
 ## Como o app consome o contrato
 
 O helper `Repo-Front/Trajetto/utils/apiError.ts` lê a resposta de erro e devolve a mensagem
@@ -133,14 +187,18 @@ try {
 | `getFieldErrors(erro)` | `{ email: 'Informe um e-mail válido' }` — encaixa direto no `setErrors` dos formulários |
 | `getErrorCode(erro)` | O `code` do contrato, para a tela reagir sem depender do texto |
 | `getErrorStatus(erro)` / `getTraceId(erro)` | Status HTTP e id para busca no log |
+| `isSessionError(erro)` | `true` quando a sessão salva não vale mais — o `AuthContext` desloga por aqui |
 
 ## Testes
 
 ```bash
 cd Repo-Back/backend
-./mvnw test -Dtest='GlobalExceptionHandlerTest,ApiErrorResponseWriterTest'
+./mvnw test -Dtest='GlobalExceptionHandlerTest,ApiErrorResponseWriterTest,SecurityErrorContractTest,ApiErrorControllerTest'
 ```
 
 - `GlobalExceptionHandlerTest` — verifica que falhas de negócio, de validação, de segurança e
   inesperadas saem todas no mesmo formato, com os status corretos.
 - `ApiErrorResponseWriterTest` — verifica o mesmo contrato nos 401/403 do Spring Security.
+- `SecurityErrorContractTest` — percorre o caminho real do token (filtro → entry point / access
+  denied handler) com token ausente, vencido, adulterado, ilegível e de outro emissor.
+- `ApiErrorControllerTest` — verifica o contrato no despacho interno para `/error`.

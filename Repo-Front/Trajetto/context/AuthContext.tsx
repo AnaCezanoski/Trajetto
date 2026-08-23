@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { api } from '../services/api';
 import { LoginRequest, RegisterRequest, User } from '../types/user';
+import { getErrorCode, isSessionError } from '../utils/apiError';
 
 interface AuthContextData {
   user: User | null;
@@ -45,12 +46,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     let isLoggingOut = false; // ← fora do useEffect
 
+    // Desloga quando a API avisa que a sessão não vale mais (contrato de erro OB03.2).
+    // Antes bastava um 401 qualquer, o que derrubava a sessão até quando o 401 era só uma
+    // senha errada no login (INVALID_CREDENTIALS) — agora o código do erro diz a diferença.
     const interceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401 && !isLoggingOut) {
+        if (isSessionError(error) && !isLoggingOut) {
           isLoggingOut = true;
-          console.log('Token expirado — deslogando...');
+          console.log(`Sessão encerrada pela API (${getErrorCode(error) ?? 'sem código'}) — deslogando...`);
           await logoutRef.current?.();
           isLoggingOut = false;
         }
