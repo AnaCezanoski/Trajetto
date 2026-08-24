@@ -1,4 +1,3 @@
-﻿import { api } from '../services/api';
 import React, { useState, useCallback } from 'react';
 import {
   SafeAreaView, View, Text, FlatList,

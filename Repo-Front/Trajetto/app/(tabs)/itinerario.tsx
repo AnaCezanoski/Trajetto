@@ -1,8 +1,7 @@
 import { PLACE_COLORS } from '@/constants/placeColors';
 import { useAuth } from '@/context/AuthContext';
 import { Places, useItineraryStore } from '@/hooks/itineraryStore';
-import { Place, placesService } from '@/services/placesService';
-import { RatingService, RatingSummary } from '@/services/ratingService';
+import { Place, placesService, RatingService, RatingSummary } from '@/services';
 import { getErrorMessage } from '@/utils/apiError';
 import StarRating from '@/components/Rating';
 import CustomButton from '@/components/CustomButton';

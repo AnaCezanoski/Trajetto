@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import CustomInput from '../components/CustomInput';
 import { Ionicons } from '@expo/vector-icons';
-import { Place, placesService } from '../services/placesService';
+import { Place, placesService } from '../services';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PRIMARY = '#006ecf';

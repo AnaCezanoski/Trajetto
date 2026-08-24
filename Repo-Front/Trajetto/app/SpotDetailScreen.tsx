@@ -7,7 +7,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { Place } from '../services/placesService';
+import { Place } from '../services';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');

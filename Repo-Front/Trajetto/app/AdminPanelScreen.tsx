@@ -12,7 +12,7 @@ import {
   Overview, CountryStats, ProfileStats, AgeGroupStats,
   ItineraryOverview, MonthStats, CategoryStats,
   TopRatedPlace, MostCommentedPlace, MostVisitedPlace,
-} from '../services/statsService';
+} from '../services';
 import { getErrorMessage } from '../utils/apiError';
 
 const PRIMARY = '#023665';

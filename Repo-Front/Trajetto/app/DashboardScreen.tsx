@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   statsService, Overview, CountryStats,
   ProfileStats, ItineraryStats, AgeGroupStats,
-} from '../services/statsService';
+} from '../services';
 import { getErrorMessage } from '../utils/apiError';
 
 const PRIMARY = '#023665';
