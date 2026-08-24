@@ -5,7 +5,7 @@ import {
   Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { userService } from '../services';
 import {
   maskName, maskBirthDate, maskTelephone,
   validateProfileForm, toBirthDateISO, fromBirthDateISO,
@@ -36,8 +36,7 @@ export default function ProfileScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    api.get('/user/me').then((res) => {
-      const u = res.data;
+    userService.getProfile().then((u) => {
       setFirstName(u.firstName ?? '');
       setLastName(u.lastName ?? '');
       setEmail(u.email ?? '');
@@ -53,7 +52,7 @@ export default function ProfileScreen() {
     setErrors({});
     try {
       setLoading(true);
-      await api.put('/user/me', { firstName, lastName, email, birthDate: toBirthDateISO(birthDate), country, telephone });
+      await userService.updateProfile({ firstName, lastName, email, birthDate: toBirthDateISO(birthDate), country, telephone });
       Alert.alert('Sucesso', 'Perfil atualizado!');
     } catch (e) {
       const fieldErrors = getFieldErrors(e);

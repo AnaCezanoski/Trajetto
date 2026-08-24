@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { PlaceSuggestion, searchAddresses } from '../services';
 import { getErrorMessage } from '../utils/apiError';
 import { Itinerary } from '../hooks/itineraryStore';
 import { useItineraryStore } from '../hooks/itineraryStore';
@@ -36,38 +37,6 @@ type Props = {
   onClose: () => void;
 };
 
-type Suggestion = { lat: number; lng: number; displayName: string; shortName: string };
-
-
-
-async function fetchSuggestions(query: string): Promise<Suggestion[]> {
-  const encoded = encodeURIComponent(query);
-  const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&countrycodes=it&limit=5&format=json&addressdetails=1`;
-
-  const res = await fetch(url, {
-    headers: {
-      'Accept-Language': 'pt-BR,pt;q=0.9',
-      'User-Agent': 'TrajettoApp/1.0 (admin@authserver.com.br)'
-    }
-  });
-
-  const data = await res.json();
-  if (!Array.isArray(data)) return [];
-
-  return data.map((item: any) => {
-    const addr = item.address ?? {};
-    const short =
-      addr.road
-        ? `${addr.road}${addr.house_number ? ' ' + addr.house_number : ''}${addr.suburb ? ', ' + addr.suburb : ''}`
-        : item.display_name.split(',')[0];
-    return {
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      displayName: item.display_name,
-      shortName: short,
-    };
-  });
-}
 
 const RADIUS = 54;
 const BALL_R = 9;
@@ -156,9 +125,9 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
 
   const [step, setStep] = useState<Step>('config');
   const [addressInput, setAddressInput] = useState('');
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState<Suggestion | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSuggestion | null>(null);
   const [generatedItinerary, setGeneratedItinerary] = useState<Itinerary | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -186,7 +155,7 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await fetchSuggestions(text.trim());
+        const results = await searchAddresses(text.trim());
         setSuggestions(results);
         if (results.length > 0) {
           // Scroll to show suggestions above the keyboard
@@ -200,7 +169,7 @@ export default function GenerateItineraryFlow({ visible, onAccept, onClose }: Pr
     }, 400);
   };
 
-  const handleSelectSuggestion = (item: Suggestion) => {
+  const handleSelectSuggestion = (item: PlaceSuggestion) => {
     Keyboard.dismiss();
     setSelectedPlace(item);
     setAddressInput(item.shortName);

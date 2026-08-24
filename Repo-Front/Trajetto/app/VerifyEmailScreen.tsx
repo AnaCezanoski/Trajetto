@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import CustomInput from '../components/CustomInput';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { api } from '../services/api';
+import { authService } from '../services';
 import { getErrorMessage } from '../utils/apiError';
 import { Ionicons } from '@expo/vector-icons';
 import Logo from '../assets/appImgs/logo.svg';
@@ -28,7 +28,7 @@ export default function VerifyEmailScreen() {
     }
     setLoading(true);
     try {
-      await api.post(`/user/verify?email=${email}&code=${codeToVerify}`);
+      await authService.verifyEmail(String(email), codeToVerify);
       Alert.alert('Sucesso', 'Conta verificada! Você já pode fazer login.');
       router.replace('/LoginScreen');
     } catch (e) {

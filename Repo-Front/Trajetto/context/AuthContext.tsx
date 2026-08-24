@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { api } from '../services/api';
+import { authService, userService } from '../services';
 import { LoginRequest, RegisterRequest, User } from '../types/user';
-import { getErrorCode, isSessionError } from '../utils/apiError';
 
 interface AuthContextData {
   user: User | null;
@@ -28,7 +27,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Tenta avisar o backend mas ignora qualquer erro
     try {
-      await api.post('/user/logout');
+      await authService.logout();
     } catch {}
   };
 
@@ -44,42 +43,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     })();
 
-    let isLoggingOut = false; // ← fora do useEffect
-
     // Desloga quando a API avisa que a sessão não vale mais (contrato de erro OB03.2).
-    // Antes bastava um 401 qualquer, o que derrubava a sessão até quando o 401 era só uma
-    // senha errada no login (INVALID_CREDENTIALS) — agora o código do erro diz a diferença.
-    const interceptor = api.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        if (isSessionError(error) && !isLoggingOut) {
-          isLoggingOut = true;
-          console.log(`Sessão encerrada pela API (${getErrorCode(error) ?? 'sem código'}) — deslogando...`);
-          await logoutRef.current?.();
-          isLoggingOut = false;
-        }
-        return Promise.reject(error);
-      }
-    );
+    // Quem reconhece esse aviso é a camada de serviços; aqui só reagimos a ele.
+    const unsubscribe = authService.onSessionExpired(async () => {
+      await logoutRef.current?.();
+    });
 
-    return () => { api.interceptors.response.eject(interceptor); };
+    return unsubscribe;
   }, []);
 
   const login = async (data: LoginRequest) => {
-    const response = await api.post('/user/login', data);
-    const { token, user } = response.data;
+    const { token, user } = await authService.login(data);
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     setUser(user);
   };
 
   const register = async (data: RegisterRequest) => {
-    await api.post('/user/create', data);
+    await authService.register(data);
   };
 
   const refreshUser = async () => {
-    const response = await api.get('/user/me');
-    const freshUser = response.data as User;
+    const freshUser = await userService.getProfile();
     await AsyncStorage.setItem('user', JSON.stringify(freshUser));
     setUser(freshUser);
   };

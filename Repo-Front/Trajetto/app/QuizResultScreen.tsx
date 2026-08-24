@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { quizData } from '../data/quizData';
-import { api } from '../services/api';
+import { userService } from '../services';
 import { useAuth } from '../context/AuthContext';
 
 export default function QuizResultScreen() {
@@ -18,7 +18,7 @@ export default function QuizResultScreen() {
 
   useEffect(() => {
     if (profile) {
-      api.put('/user/me', { travelerProfile: profile })
+      userService.updateTravelerProfile(profile)
         .then(() => refreshUser())
         .catch(() => {});
     }

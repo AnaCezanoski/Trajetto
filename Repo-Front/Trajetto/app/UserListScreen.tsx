@@ -1,9 +1,10 @@
+﻿import { api } from '../services/api';
 import React, { useState, useCallback } from 'react';
 import {
   SafeAreaView, View, Text, FlatList,
   TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
 } from 'react-native';
-import { api } from '../services/api';
+import { userService } from '../services';
 import { getErrorMessage } from '../utils/apiError';
 import { User } from '../types/user';
 import { useAuth } from '../context/AuthContext';
@@ -21,10 +22,9 @@ export default function UserListScreen() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/user');
-      setUsers(res.data);
+      setUsers(await userService.getAll());
     } catch (e) {
-      Alert.alert('Erro', getErrorMessage(e, 'Não foi possível carregar os usuários.'));
+      Alert.alert('Erro', getErrorMessage(e, 'NÃ£o foi possÃ­vel carregar os usuÃ¡rios.'));
     } finally {
       setLoading(false);
     }
@@ -35,16 +35,16 @@ export default function UserListScreen() {
   );
 
   const deleteUser = (id: number, name: string) => {
-    Alert.alert('Excluir usuário', `Deseja excluir ${name}?`, [
+    Alert.alert('Excluir usuÃ¡rio', `Deseja excluir ${name}?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir', style: 'destructive', onPress: async () => {
           try {
-            await api.delete(`/user/${id}`);
+            await userService.remove(id);
             fetchUsers();
           } catch (e) {
-            // Ex.: "Um administrador não pode remover a si mesmo."
-            Alert.alert('Erro', getErrorMessage(e, 'Não foi possível excluir o usuário.'));
+            // Ex.: "Um administrador nÃ£o pode remover a si mesmo."
+            Alert.alert('Erro', getErrorMessage(e, 'NÃ£o foi possÃ­vel excluir o usuÃ¡rio.'));
           }
         },
       },
@@ -57,7 +57,7 @@ export default function UserListScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Painel Admin</Text>
-          <Text style={styles.headerSub}>Olá, {admin?.firstName} 🛡️</Text>
+          <Text style={styles.headerSub}>OlÃ¡, {admin?.firstName} ðŸ›¡ï¸</Text>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
           <Text style={styles.logoutText}>Sair</Text>
@@ -67,7 +67,7 @@ export default function UserListScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={styles.loadingText}>Carregando usuários...</Text>
+          <Text style={styles.loadingText}>Carregando usuÃ¡rios...</Text>
         </View>
       ) : (
         <FlatList
@@ -75,21 +75,21 @@ export default function UserListScreen() {
           keyExtractor={(item, index) => item.id != null ? String(item.id) : String(index)}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            <Text style={styles.sectionLabel}>USUÁRIOS ({users.length})</Text>
+            <Text style={styles.sectionLabel}>USUÃRIOS ({users.length})</Text>
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.cardLeft}>
                 <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarEmoji}>👤</Text>
+                  <Text style={styles.avatarEmoji}>ðŸ‘¤</Text>
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardName}>{item.firstName} {item.lastName}</Text>
                   <Text style={styles.cardEmail}>{item.email}</Text>
-                  <Text style={styles.cardMeta}>{item.country}{item.telephone ? ` · ${item.telephone}` : ''}</Text>
+                  <Text style={styles.cardMeta}>{item.country}{item.telephone ? ` Â· ${item.telephone}` : ''}</Text>
                   <View style={[styles.roleBadge, item.isAdmin && styles.roleBadgeAdmin]}>
                     <Text style={[styles.roleBadgeText, item.isAdmin && styles.roleBadgeTextAdmin]}>
-                      {item.isAdmin ? '🛡️ Admin' : '👤 Usuário'}
+                      {item.isAdmin ? 'ðŸ›¡ï¸ Admin' : 'ðŸ‘¤ UsuÃ¡rio'}
                     </Text>
                   </View>
                 </View>
@@ -107,7 +107,7 @@ export default function UserListScreen() {
                   onPress={() => deleteUser(item.id, item.firstName)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.deleteBtnIcon}>🗑️</Text>
+                  <Text style={styles.deleteBtnIcon}>ðŸ—‘ï¸</Text>
                 </TouchableOpacity>
               </View>
             </View>

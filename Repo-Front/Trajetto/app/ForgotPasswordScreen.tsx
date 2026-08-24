@@ -4,7 +4,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView
 } from 'react-native';
-import { api } from '../services/api';
+import { authService } from '../services';
 import { useRouter } from 'expo-router';
 import { validateEmail } from '../utils/validators';
 import { getErrorMessage } from '../utils/apiError';
@@ -26,7 +26,7 @@ export default function ForgotPasswordScreen() {
     setErrors({});
     try {
       setLoading(true);
-      await api.post('/user/password/forgot', { email: email.trim().toLowerCase() });
+      await authService.requestPasswordCode(email);
       Alert.alert('Código enviado!', 'Verifique seu e-mail e insira o código na próxima tela.', [
         { text: 'OK', onPress: () => router.push({ pathname: '/ResetPasswordScreen', params: { email: email.trim().toLowerCase() } }) }
       ]);

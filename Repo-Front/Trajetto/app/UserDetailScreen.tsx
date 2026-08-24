@@ -5,7 +5,7 @@ import {
   Modal, FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { api } from '../services/api';
+import { userService } from '../services';
 import { countries } from '../utils/countries';
 import { getErrorMessage } from '../utils/apiError';
 
@@ -34,7 +34,7 @@ export default function UserDetailScreen() {
   const handleUpdate = async () => {
     try {
       setLoading(true);
-      await api.patch(`/user/${user.id}`, { firstName, lastName, email, birthDate, country, telephone });
+      await userService.update(user.id, { firstName, lastName, email, birthDate, country, telephone });
       Alert.alert('Sucesso', 'Usuário atualizado!');
       router.back();
     } catch (e) {
@@ -46,7 +46,7 @@ export default function UserDetailScreen() {
 
   const handleRoleChange = async (newIsAdmin: boolean) => {
     try {
-      await api.put(`/user/${user.id}/role`, { isAdmin: newIsAdmin });
+      await userService.updateRole(user.id, newIsAdmin);
       setIsAdmin(newIsAdmin);
     } catch (e) {
       // Ex.: "Um administrador não pode alterar o próprio cargo."
