@@ -54,6 +54,8 @@ que ainda não foram executados naquele banco. O controle fica na tabela
 | `V1` | Retrato do esquema que a aplicação criava sozinha antes do Flyway. |
 | `V2` | Índices dos indicadores do painel: os `UNIQUE` que passam a garantir no banco que um e-mail pertence a um usuário só e que um usuário avalia um local uma vez só, mais os índices comuns nas colunas que o painel agrupa. |
 | `V3` | `sp_stats_user_overview`, a *stored procedure* que devolve em uma linha os sete indicadores de usuários do painel. |
+| `V4` | Índices de roteiros e locais: os `UNIQUE` que passam a garantir no banco que um usuário tem no máximo um roteiro ativo e que cada posição de um roteiro é ocupada por um local só, mais a troca de três índices da `V2` por formas que as consultas do painel conseguem usar. |
+| `V5` | `sp_stats_itinerary_overview`, contraparte da `V3` para os cartões de roteiros. |
 
 A `V2` limpa duplicatas antes de criar cada `UNIQUE`: e-mail repetido faz a
 conta mais antiga manter o endereço e as demais receberem o sufixo
@@ -61,9 +63,24 @@ conta mais antiga manter o endereço e as demais receberem o sufixo
 primeira e descarta as outras. Em banco íntegro esse passo não altera
 nenhuma linha.
 
-A `V3` cria uma rotina, então o usuário do banco precisa do privilégio
+A `V3` e a `V5` criam rotinas, então o usuário do banco precisa do privilégio
 `CREATE ROUTINE`. Com o `root` do ambiente local e do CI isso já vale; num
 banco gerenciado, confira antes de subir.
+
+A `V4` também limpa antes de criar cada `UNIQUE`: com mais de um roteiro ativo
+no mesmo usuário, o mais recente continua ativo e os outros só perdem a marca
+(nenhum roteiro é apagado); com duas paradas na mesma posição de um roteiro, a
+mais antiga fica. Em banco íntegro nenhum dos dois passos altera uma linha
+sequer — nenhum caminho do código de hoje cria essas duplicatas de propósito,
+elas só apareceriam por corrida entre requisições simultâneas.
+
+Ela usa dois recursos do MySQL 8 que valem uma nota. O `UNIQUE` de roteiro
+ativo é sobre uma **coluna gerada** (`active_user_id`), que vale `user_id`
+enquanto o roteiro está ativo e `NULL` quando não está: como índice `UNIQUE`
+não compara `NULL`s entre si, o efeito é um `UNIQUE` que enxerga só as linhas
+ativas. E `idx_places_category_label` é um **índice funcional**, sobre a
+expressão que `/stats/places-by-category` agrupa — um índice comum sobre
+`category` não serve para agrupar por expressão.
 
 ## Recriando o banco do zero
 
