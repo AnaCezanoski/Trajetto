@@ -16,10 +16,14 @@ import java.util.List;
 /**
  * Indicadores do painel gerencial.
  *
- * <p>O controlador só expõe os endpoints: quem agrupa e conta é o banco,
- * pelas consultas do {@code StatsService}. O contrato JSON de cada endpoint
- * é o mesmo que o aplicativo já consumia — o que mudou foi onde a conta é
- * feita.</p>
+ * <p>O controlador só expõe os endpoints: quem agrupa, conta, ordena e
+ * recorta é o banco, pelas consultas do {@code StatsService}. Cada endpoint
+ * devolve o que o painel exibe, e não a coleção de onde o número saiu.</p>
+ *
+ * <p>Um único contrato JSON mudou desde então: {@code /itineraries-per-user}
+ * devolvia a lista de todos os clientes, que o painel recortava e contava na
+ * tela; agora devolve o ranking já cortado em dez mais os dois totais de
+ * clientes com e sem roteiro, ambos contados pelo banco.</p>
  */
 @RestController
 @RequestMapping("/stats")
@@ -50,9 +54,9 @@ public class StatsController {
         return ResponseEntity.ok(statsService.getUsersByTravelerProfile());
     }
 
-    @Operation(summary = "Roteiros criados por cliente")
+    @Operation(summary = "Ranking de roteiros por cliente, com o total de clientes com e sem roteiro")
     @GetMapping("/itineraries-per-user")
-    public ResponseEntity<List<ItinerariesPerUserDTO>> getItinerariesPerUser() {
+    public ResponseEntity<ItinerariesPerUserPanelDTO> getItinerariesPerUser() {
         return ResponseEntity.ok(statsService.getItinerariesPerUser());
     }
 
@@ -64,7 +68,7 @@ public class StatsController {
 
     // ─── Roteiros ──────────────────────────────────────────────────────────
 
-    @Operation(summary = "Cartões de roteiros do painel")
+    @Operation(summary = "Cartões de roteiros do painel (stored procedure sp_stats_itinerary_overview)")
     @GetMapping("/itinerary-overview")
     public ResponseEntity<ItineraryOverviewDTO> getItineraryOverview() {
         return ResponseEntity.ok(statsService.getItineraryOverview());

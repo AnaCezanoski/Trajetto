@@ -4,11 +4,14 @@ import com.trajetto.backend.stats.dto.AgeGroupBreakdownDTO;
 import com.trajetto.backend.stats.dto.AgeGroupCountDTO;
 import com.trajetto.backend.stats.dto.CategoryCountDTO;
 import com.trajetto.backend.stats.dto.ItinerariesPerMonthRowDTO;
+import com.trajetto.backend.stats.dto.ItinerariesPerUserDTO;
+import com.trajetto.backend.stats.dto.ItinerariesPerUserPanelDTO;
 import com.trajetto.backend.stats.dto.ItineraryOverviewDTO;
 import com.trajetto.backend.stats.dto.MonthCountDTO;
 import com.trajetto.backend.stats.dto.MostCommentedPlaceDTO;
 import com.trajetto.backend.stats.dto.ProfileCountDTO;
 import com.trajetto.backend.stats.dto.TopRatedPlaceDTO;
+import com.trajetto.backend.stats.repository.ItineraryOverviewStatsRepository;
 import com.trajetto.backend.stats.repository.ItineraryStatsRepository;
 import com.trajetto.backend.stats.repository.PlaceStatsRepository;
 import com.trajetto.backend.stats.repository.RatingStatsRepository;
@@ -17,6 +20,8 @@ import com.trajetto.backend.stats.repository.UserStatsRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.Pageable;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -25,13 +30,17 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * BE02.1 — depois que agrupar e contar passaram a ser trabalho do banco, o que
- * sobrou no {@code StatsService} é a tradução entre o resultado da consulta e o
- * contrato que o painel consome. É isso que este teste cobre: nenhuma conta é
- * refeita aqui, os repositórios são dublês devolvendo linhas prontas.
+ * Depois que agrupar, contar, ordenar e recortar passaram a ser trabalho do
+ * banco, o que sobrou no {@code StatsService} é a tradução entre o resultado
+ * da consulta e o contrato que o painel consome. É isso que este teste cobre:
+ * nenhuma conta é refeita aqui, os repositórios são dublês devolvendo linhas
+ * prontas.
  *
  * <p>As linhas usam os mesmos tipos que o driver do MySQL entrega de verdade —
  * {@code BigDecimal} para {@code AVG} e {@code SUM}, {@code Long} para
@@ -42,13 +51,15 @@ class StatsServiceTest {
 
     @Mock private UserOverviewStatsRepository userOverviewStatsRepository;
     @Mock private UserStatsRepository userStatsRepository;
+    @Mock private ItineraryOverviewStatsRepository itineraryOverviewStatsRepository;
     @Mock private ItineraryStatsRepository itineraryStatsRepository;
     @Mock private PlaceStatsRepository placeStatsRepository;
     @Mock private RatingStatsRepository ratingStatsRepository;
 
     private StatsService service() {
         return new StatsService(userOverviewStatsRepository, userStatsRepository,
-                itineraryStatsRepository, placeStatsRepository, ratingStatsRepository);
+                itineraryOverviewStatsRepository, itineraryStatsRepository,
+                placeStatsRepository, ratingStatsRepository);
     }
 
     @Test
@@ -70,44 +81,56 @@ class StatsServiceTest {
     }
 
     @Test
-    @DisplayName("Cartões de roteiros arredondam para uma casa e fecham a conta dos não avaliados")
-    void cartoesDeRoteiros() {
-        // total, duração média, nota média, avaliados — nos tipos que o MySQL devolve
-        when(itineraryStatsRepository.overviewRow()).thenReturn(List.<Object[]>of(
-                new Object[]{10L, new BigDecimal("4.7500"), new BigDecimal("3.6667"), new BigDecimal("6")}));
+    @DisplayName("Cartões de roteiros são repassados como a procedure os entregou")
+    void cartoesDeRoteirosVemProntos() {
+        ItineraryOverviewDTO daProcedure = new ItineraryOverviewDTO(10, 4.8, 3.7, 6, 4);
+        when(itineraryOverviewStatsRepository.fetchOverview()).thenReturn(daProcedure);
 
-        ItineraryOverviewDTO cartoes = service().getItineraryOverview();
-
-        assertEquals(10, cartoes.totalItineraries());
-        assertEquals(4.8, cartoes.avgDurationDays());
-        assertEquals(3.7, cartoes.avgRating());
-        assertEquals(6, cartoes.ratedCount());
-        assertEquals(4, cartoes.unratedCount());
+        assertSame(daProcedure, service().getItineraryOverview());
     }
 
     @Test
-    @DisplayName("Sem roteiro com data ou nota, a média é nula em vez de zero")
-    void mediasNulasQuandoNaoHaOQueMediar() {
-        when(itineraryStatsRepository.overviewRow()).thenReturn(List.<Object[]>of(
-                new Object[]{0L, null, null, BigDecimal.ZERO}));
+    @DisplayName("O bloco de roteiros por cliente junta o ranking cortado no banco com as duas contagens")
+    void roteirosPorCliente() {
+        when(userStatsRepository.findTopClientsByItineraryCount(any())).thenReturn(List.of(
+                new ItinerariesPerUserDTO("Ana Souza", "ana@trajetto.com", 5),
+                new ItinerariesPerUserDTO("Bruno Lima", "bruno@trajetto.com", 2)));
+        when(userStatsRepository.countClientItineraryCoverage()).thenReturn(List.<Object[]>of(
+                new Object[]{new BigDecimal("2"), new BigDecimal("7")}));
 
-        ItineraryOverviewDTO cartoes = service().getItineraryOverview();
+        ItinerariesPerUserPanelDTO bloco = service().getItinerariesPerUser();
 
-        assertEquals(0, cartoes.totalItineraries());
-        assertNull(cartoes.avgDurationDays());
-        assertNull(cartoes.avgRating());
-        assertEquals(0, cartoes.unratedCount());
+        assertEquals(2, bloco.topClients().size());
+        assertEquals("Ana Souza", bloco.topClients().get(0).user());
+        assertEquals(2, bloco.clientsWithItinerary());
+        assertEquals(7, bloco.clientsWithoutItinerary());
     }
 
     @Test
-    @DisplayName("Banco de roteiros vazio não quebra os cartões")
-    void semLinhaNenhuma() {
-        when(itineraryStatsRepository.overviewRow()).thenReturn(List.<Object[]>of());
+    @DisplayName("O ranking pede ao banco só as dez linhas que o painel exibe")
+    void rankingPedeApenasDezLinhas() {
+        when(userStatsRepository.findTopClientsByItineraryCount(any())).thenReturn(List.of());
+        when(userStatsRepository.countClientItineraryCoverage()).thenReturn(List.<Object[]>of());
 
-        ItineraryOverviewDTO cartoes = service().getItineraryOverview();
+        service().getItinerariesPerUser();
 
-        assertEquals(0, cartoes.totalItineraries());
-        assertNull(cartoes.avgRating());
+        ArgumentCaptor<Pageable> recorte = ArgumentCaptor.forClass(Pageable.class);
+        verify(userStatsRepository).findTopClientsByItineraryCount(recorte.capture());
+        assertEquals(10, recorte.getValue().getPageSize());
+        assertEquals(0, recorte.getValue().getPageNumber());
+    }
+
+    @Test
+    @DisplayName("Base sem nenhum cliente não quebra o bloco de roteiros por cliente")
+    void semClienteNenhum() {
+        when(userStatsRepository.findTopClientsByItineraryCount(any())).thenReturn(List.of());
+        when(userStatsRepository.countClientItineraryCoverage()).thenReturn(List.<Object[]>of());
+
+        ItinerariesPerUserPanelDTO bloco = service().getItinerariesPerUser();
+
+        assertEquals(List.of(), bloco.topClients());
+        assertEquals(0, bloco.clientsWithItinerary());
+        assertEquals(0, bloco.clientsWithoutItinerary());
     }
 
     @Test

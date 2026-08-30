@@ -13,8 +13,21 @@ export interface Overview {
 
 export interface CountryStats   { country: string; count: number; }
 export interface ProfileStats   { profile: string; count: number; }
-export interface ItineraryStats { user: string; email: string; count: number; }
 export interface AgeGroupStats  { group: string; count: number; }
+
+/** Uma linha do ranking de clientes que mais criaram roteiros. */
+export interface ClientItineraryCount { user: string; email: string; count: number; }
+
+/**
+ * Bloco "roteiros por cliente". O endpoint devolvia a lista de todos os
+ * clientes e a tela cortava as dez primeiras e contava quantas vinham com
+ * zero; agora o ranking chega recortado e as duas contagens chegam prontas.
+ */
+export interface ItinerariesPerUserPanel {
+  topClients: ClientItineraryCount[];
+  clientsWithItinerary: number;
+  clientsWithoutItinerary: number;
+}
 
 // ─── Interfaces de roteiros ────────────────────────────────────────────────
 export interface ItineraryOverview {
@@ -37,7 +50,7 @@ export const statsService = {
   getOverview:           () => api.get<Overview>('/stats/overview').then(r => r.data),
   getCountries:          () => api.get<CountryStats[]>('/stats/countries').then(r => r.data),
   getTravelerProfiles:   () => api.get<ProfileStats[]>('/stats/traveler-profiles').then(r => r.data),
-  getItinerariesPerUser: () => api.get<ItineraryStats[]>('/stats/itineraries-per-user').then(r => r.data),
+  getItinerariesPerUser: () => api.get<ItinerariesPerUserPanel>('/stats/itineraries-per-user').then(r => r.data),
   getAgeGroups:          () => api.get<AgeGroupStats[]>('/stats/age-groups').then(r => r.data),
 
   // Roteiros
