@@ -47,6 +47,24 @@ que ainda não foram executados naquele banco. O controle fica na tabela
 - **Não volte o `ddl-auto` para `update`.** Isso reabriria a porta para o banco
   mudar sozinho, sem histórico e sem revisão.
 
+## O que já está versionado
+
+| Versão | O que faz |
+| ------ | --------- |
+| `V1` | Retrato do esquema que a aplicação criava sozinha antes do Flyway. |
+| `V2` | Índices dos indicadores do painel: os `UNIQUE` que passam a garantir no banco que um e-mail pertence a um usuário só e que um usuário avalia um local uma vez só, mais os índices comuns nas colunas que o painel agrupa. |
+| `V3` | `sp_stats_user_overview`, a *stored procedure* que devolve em uma linha os sete indicadores de usuários do painel. |
+
+A `V2` limpa duplicatas antes de criar cada `UNIQUE`: e-mail repetido faz a
+conta mais antiga manter o endereço e as demais receberem o sufixo
+`.dup<code>`; avaliação repetida do mesmo usuário no mesmo local mantém a
+primeira e descarta as outras. Em banco íntegro esse passo não altera
+nenhuma linha.
+
+A `V3` cria uma rotina, então o usuário do banco precisa do privilégio
+`CREATE ROUTINE`. Com o `root` do ambiente local e do CI isso já vale; num
+banco gerenciado, confira antes de subir.
+
 ## Recriando o banco do zero
 
 ```sql
