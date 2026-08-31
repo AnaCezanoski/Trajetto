@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ItineraryService } from '../services/itineraryService';
+import { ItineraryService } from '../services';
 
 export interface Places {
   name: string;

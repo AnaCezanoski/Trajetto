@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:arquitetura": "node ./scripts/teste-arquitetura.js"
   },
   "dependencies": {
     "@expo-google-fonts/fugaz-one": "^0.4.1",

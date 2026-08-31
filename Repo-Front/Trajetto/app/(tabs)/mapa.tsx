@@ -1,8 +1,7 @@
 import { PLACE_COLORS } from '@/constants/placeColors';
 import { useAuth } from '@/context/AuthContext';
 import { useItineraryStore } from '@/hooks/itineraryStore';
-import { RouteService } from '@/services/routeService';
-import { placesService, Place, PlacesFilter } from '@/services/placesService';
+import { Place, placesService, PlacesFilter, RouteService } from '@/services';
 import { isPlacePast } from '@/app/utils/isPlacePast';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomInput from '@/components/CustomInput';

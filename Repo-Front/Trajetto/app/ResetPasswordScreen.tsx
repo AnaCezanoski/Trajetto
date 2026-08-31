@@ -4,7 +4,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView
 } from 'react-native';
-import { api } from '../services/api';
+import { authService } from '../services';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { validateEmail, validatePassword, passwordStrength } from '../utils/validators';
 import { getErrorMessage } from '../utils/apiError';
@@ -37,7 +37,7 @@ export default function ResetPasswordScreen() {
     setErrors({});
     try {
       setLoading(true);
-      await api.post('/user/password/reset', { email: email.trim().toLowerCase(), code, newPassword: password });
+      await authService.resetPassword({ email, code, newPassword: password });
       Alert.alert('Sucesso', 'Senha redefinida!', [{ text: 'OK', onPress: () => router.replace('/LoginScreen') }]);
     } catch (error) {
       // Ex.: "Este código expirou. Solicite um novo." / "Código de redefinição inválido."

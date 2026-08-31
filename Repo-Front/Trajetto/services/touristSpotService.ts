@@ -1,7 +1,6 @@
-// services/touristSpotService.ts
-// Sem mudanças na interface — o app continua chamando seu backend normalmente
+// Pontos turísticos vindos do backend.
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://localhost:8080';
+import { api } from './api';
 
 export interface TouristSpot {
   xid: string;
@@ -17,22 +16,19 @@ export interface SearchOptions {
   radius?: number;
 }
 
+const DEFAULT_RADIUS = 10000;
+
 export async function searchByCity(
   cityName: string,
   options: SearchOptions = {}
 ): Promise<TouristSpot[]> {
-  const { radius = 10000 } = options;
+  const { radius = DEFAULT_RADIUS } = options;
 
-  const params = new URLSearchParams({
-    city: cityName,
-    radius: String(radius),
+  const response = await api.get<TouristSpot[]>('/api/tourist-spots', {
+    params: { city: cityName, radius },
   });
 
-  const response = await fetch(`${BACKEND_URL}/api/tourist-spots?${params}`);
-
-  if (!response.ok) {
-    throw new Error(`Erro ao buscar pontos turísticos: ${response.status}`);
-  }
-
-  return response.json() as Promise<TouristSpot[]>;
+  return response.data;
 }
+
+export const touristSpotService = { searchByCity };

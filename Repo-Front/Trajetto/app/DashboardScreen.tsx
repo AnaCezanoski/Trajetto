@@ -8,7 +8,7 @@ import {
   statsService, Overview, CountryStats, ProfileStats, AgeGroupStats,
   ItinerariesPerUserPanel, ItineraryOverview, MonthStats, CategoryStats,
   TopRatedPlace, MostCommentedPlace, MostVisitedPlace,
-} from '../services/statsService';
+} from '../services';
 import { getErrorMessage } from '../utils/apiError';
 
 const PRIMARY = '#023665';

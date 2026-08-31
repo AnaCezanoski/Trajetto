@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { userService } from '../services';
 import { Ionicons } from '@expo/vector-icons';
 
 const PRIMARY = '#006ecf';
@@ -31,7 +31,7 @@ export default function TravelerTestScreen() {
     // Primeiro login ou relogin com SKIPPED — salva/mantém SKIPPED
     try {
       setSkipping(true);
-      await api.put('/user/me', { travelerProfile: 'SKIPPED' });
+      await userService.updateTravelerProfile('SKIPPED');
       await refreshUser();
       router.replace('/(tabs)');
     } catch {
