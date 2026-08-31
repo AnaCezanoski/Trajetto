@@ -1,15 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
-  ActivityIndicator, TouchableOpacity, RefreshControl,
+  View, Text, ScrollView, StyleSheet, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  statsService, Overview, CountryStats, ProfileStats, AgeGroupStats,
-  ItinerariesPerUserPanel, ItineraryOverview, MonthStats, CategoryStats,
-  TopRatedPlace, MostCommentedPlace, MostVisitedPlace,
-} from '../services';
-import { getErrorMessage } from '../utils/apiError';
+// Os tipos dos indicadores vem do proprio retorno dos servicos: quem monta a busca ja diz
+// o formato, e repetir a lista de tipos aqui so criaria uma copia para sair do lugar.
+import { statsService } from '../services';
+import { AsyncBoundary, useAsyncData } from '../components/feedback';
 
 const PRIMARY = '#023665';
 const COLORS = ['#023665','#2563EB','#7C3AED','#DB2777','#D97706','#16A34A','#0891B2','#DC2626'];
@@ -117,266 +114,219 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ─── Tela principal ───────────────────────────────────────
 export default function DashboardScreen() {
-  // Usuários
-  const [overview,   setOverview]   = useState<Overview | null>(null);
-  const [countries,  setCountries]  = useState<CountryStats[]>([]);
-  const [profiles,   setProfiles]   = useState<ProfileStats[]>([]);
-  const [ageGroups,  setAgeGroups]  = useState<AgeGroupStats[]>([]);
-  // Roteiros
-  const [perClient,  setPerClient]  = useState<ItinerariesPerUserPanel | null>(null);
-  const [itinerary,  setItinerary]  = useState<ItineraryOverview | null>(null);
-  const [perMonth,   setPerMonth]   = useState<MonthStats[]>([]);
-  // Locais
-  const [categories, setCategories] = useState<CategoryStats[]>([]);
-  const [visited,    setVisited]    = useState<MostVisitedPlace[]>([]);
-  const [topRated,   setTopRated]   = useState<TopRatedPlace[]>([]);
-  const [commented,  setCommented]  = useState<MostCommentedPlace[]>([]);
-
-  const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error,      setError]      = useState('');
-
-  const load = async () => {
-    try {
-      const [ov, co, pr, ag, cli, itin, mes, cat, vis, top, com] = await Promise.all([
-        statsService.getOverview(),
-        statsService.getCountries(),
-        statsService.getTravelerProfiles(),
-        statsService.getAgeGroups(),
-        statsService.getItinerariesPerUser(),
-        statsService.getItineraryOverview(),
-        statsService.getItinerariesPerMonth(),
-        statsService.getPlacesByCategory(),
-        statsService.getMostVisitedPlaces(),
-        statsService.getTopRatedPlaces(),
-        statsService.getMostCommentedPlaces(),
-      ]);
-      setOverview(ov);
-      setCountries(co);
-      setProfiles(pr);
-      setAgeGroups(ag);
-      setPerClient(cli);
-      setItinerary(itin);
-      setPerMonth(mes);
-      setCategories(cat);
-      setVisited(vis);
-      setTopRated(top);
-      setCommented(com);
-      setError('');
-    } catch (e) {
-      setError(getErrorMessage(e, 'Não foi possível carregar os dados.'));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const onRefresh = () => { setRefreshing(true); load(); };
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={styles.loadingText}>Carregando dashboard...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={load}>
-          <Text style={styles.retryText}>Tentar novamente</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const verifiedPct = overview && overview.totalUsers > 0
-    ? Math.round((overview.verifiedUsers / overview.totalUsers) * 100) : 0;
-
-  // Média nula não é zero: significa que não havia nada para entrar na conta.
-  const umaCasa = (valor: number | null | undefined) =>
-    valor === null || valor === undefined ? '—' : valor.toFixed(1);
+  // Uma busca só para o painel inteiro: o gráfico que falhar derruba a tela toda de
+  // propósito, porque meio painel carregado engana quem está lendo os números.
+  const painel = useAsyncData(async () => {
+    const [ov, co, pr, ag, cli, itin, mes, cat, vis, top, com] = await Promise.all([
+      statsService.getOverview(),
+      statsService.getCountries(),
+      statsService.getTravelerProfiles(),
+      statsService.getAgeGroups(),
+      statsService.getItinerariesPerUser(),
+      statsService.getItineraryOverview(),
+      statsService.getItinerariesPerMonth(),
+      statsService.getPlacesByCategory(),
+      statsService.getMostVisitedPlaces(),
+      statsService.getTopRatedPlaces(),
+      statsService.getMostCommentedPlaces(),
+    ]);
+    return {
+      overview: ov, countries: co, profiles: pr, ageGroups: ag,
+      perClient: cli, itinerary: itin, perMonth: mes,
+      categories: cat, visited: vis, topRated: top, commented: com,
+    };
+  }, []);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <Text style={styles.headerSub}>Visão geral da plataforma Trajetto</Text>
-        </View>
+    <AsyncBoundary
+      state={painel}
+      onRetry={painel.reload}
+      loading={{ title: 'Carregando dashboard...', message: 'Estamos somando os números da plataforma.' }}
+      error={{ title: 'Não foi possível carregar o painel' }}
+    >
+      {({
+        overview, countries, profiles, ageGroups,
+        perClient, itinerary, perMonth,
+        categories, visited, topRated, commented,
+      }) => {
+        const verifiedPct = overview && overview.totalUsers > 0
+          ? Math.round((overview.verifiedUsers / overview.totalUsers) * 100) : 0;
 
-        {/* ══════════════ Usuários ══════════════ */}
-        <BlockTitle>Usuários</BlockTitle>
+        // Média nula não é zero: significa que não havia nada para entrar na conta.
+        const umaCasa = (valor: number | null | undefined) =>
+          valor === null || valor === undefined ? '—' : valor.toFixed(1);
 
-        <View style={styles.statsGrid}>
-          <StatCard icon="👥" label="Total de usuários" value={overview?.totalUsers ?? 0} color={PRIMARY} />
-          <StatCard icon="👤" label="Clientes"          value={overview?.totalClients ?? 0} color="#2563EB" />
-          <StatCard icon="🛡️" label="Administradores"  value={overview?.totalAdmins ?? 0}  color="#7C3AED" />
-          <StatCard icon="✅" label="Verificados"      value={overview?.verifiedUsers ?? 0}   color="#16A34A" sub={`${verifiedPct}% do total`} />
-          <StatCard icon="⏳" label="Não verificados"  value={overview?.unverifiedUsers ?? 0} color="#DC2626" />
-          {overview?.avgAge && (
-            <StatCard icon="🎂" label="Idade média"    value={`${overview.avgAge} anos`} color="#0891B2" />
-          )}
-        </View>
-
-        {/* ─── Verificação ─── */}
-        <Section title="Taxa de verificação de e-mail">
-          <View style={styles.verifiedRow}>
-            <View style={styles.verifiedBarTrack}>
-              <View style={[styles.verifiedBarFill, { width: `${verifiedPct}%` }]} />
+        return (
+        <SafeAreaView style={styles.safe}>
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={painel.refreshing} onRefresh={painel.reload} tintColor={PRIMARY} />}
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Dashboard</Text>
+              <Text style={styles.headerSub}>Visão geral da plataforma Trajetto</Text>
             </View>
-            <Text style={styles.verifiedPct}>{verifiedPct}%</Text>
-          </View>
-          <View style={styles.verifiedLegend}>
-            <Text style={styles.verifiedLegendText}>✅ {overview?.verifiedUsers} verificados</Text>
-            <Text style={styles.verifiedLegendText}>⏳ {overview?.unverifiedUsers} pendentes</Text>
-          </View>
-        </Section>
 
-        {/* ─── Perfis de viajante ─── */}
-        {profiles.length > 0 && (
-          <Section title="Perfis de viajante">
-            <DonutLegend data={profiles} labelKey="profile" valueKey="count" />
-          </Section>
-        )}
+            {/* ══════════════ Usuários ══════════════ */}
+            <BlockTitle>Usuários</BlockTitle>
 
-        {/* ─── Faixas etárias ─── */}
-        {ageGroups.filter(g => g.count > 0).length > 0 && (
-          <Section title="Faixas etárias">
-            <BarChart data={ageGroups.filter(g => g.count > 0)} labelKey="group" valueKey="count" />
-          </Section>
-        )}
-
-        {/* ─── Países ─── */}
-        {countries.length > 0 && (
-          <Section title={`Países (${countries.length} países)`}>
-            <BarChart data={countries} labelKey="country" valueKey="count" />
-          </Section>
-        )}
-
-        {/* ══════════════ Roteiros ══════════════ */}
-        <BlockTitle>Roteiros</BlockTitle>
-
-        <View style={styles.statsGrid}>
-          <StatCard icon="🗺️" label="Roteiros criados"  value={itinerary?.totalItineraries ?? 0} color="#D97706" />
-          <StatCard icon="📅" label="Duração média"     value={`${umaCasa(itinerary?.avgDurationDays)} dias`} color="#0891B2" />
-          <StatCard icon="⭐" label="Nota média"        value={`${umaCasa(itinerary?.avgRating)} / 5`} color="#7C3AED" />
-          <StatCard icon="📝" label="Avaliados"         value={itinerary?.ratedCount ?? 0} color="#16A34A"
-                    sub={`${itinerary?.unratedCount ?? 0} sem avaliação`} />
-        </View>
-
-        {perMonth.length > 0 && (
-          <Section title="Roteiros criados por mês">
-            <BarChart data={perMonth} labelKey="month" valueKey="count" limit={12} />
-          </Section>
-        )}
-
-        {/* ─── Clientes com mais roteiros ─── */}
-        {/* O ranking chega do servidor já cortado em dez e sem os clientes
-            zerados: a tela não filtra nem recorta nada. */}
-        {perClient && perClient.topClients.length > 0 && (
-          <Section title="Clientes com mais roteiros">
-            <RankList
-              items={perClient.topClients.map(c => ({
-                title: c.user,
-                subtitle: c.email,
-                value: c.count,
-                valueLabel: c.count === 1 ? 'roteiro' : 'roteiros',
-              }))}
-            />
-          </Section>
-        )}
-
-        {/* ─── Cobertura de roteiros entre os clientes ─── */}
-        {perClient && perClient.clientsWithoutItinerary > 0 && (
-          <Section title="Clientes sem roteiro">
-            <View style={styles.noItineraryBox}>
-              <Text style={styles.noItineraryCount}>{perClient.clientsWithoutItinerary}</Text>
-              <Text style={styles.noItineraryLabel}>
-                clientes ainda não geraram nenhum roteiro
-              </Text>
-              <Text style={styles.noItinerarySub}>
-                {perClient.clientsWithItinerary} já geraram pelo menos um
-              </Text>
+            <View style={styles.statsGrid}>
+              <StatCard icon="👥" label="Total de usuários" value={overview?.totalUsers ?? 0} color={PRIMARY} />
+              <StatCard icon="👤" label="Clientes"          value={overview?.totalClients ?? 0} color="#2563EB" />
+              <StatCard icon="🛡️" label="Administradores"  value={overview?.totalAdmins ?? 0}  color="#7C3AED" />
+              <StatCard icon="✅" label="Verificados"      value={overview?.verifiedUsers ?? 0}   color="#16A34A" sub={`${verifiedPct}% do total`} />
+              <StatCard icon="⏳" label="Não verificados"  value={overview?.unverifiedUsers ?? 0} color="#DC2626" />
+              {overview?.avgAge && (
+                <StatCard icon="🎂" label="Idade média"    value={`${overview.avgAge} anos`} color="#0891B2" />
+              )}
             </View>
-          </Section>
-        )}
 
-        {/* ══════════════ Locais ══════════════ */}
-        <BlockTitle>Locais</BlockTitle>
+            {/* ─── Verificação ─── */}
+            <Section title="Taxa de verificação de e-mail">
+              <View style={styles.verifiedRow}>
+                <View style={styles.verifiedBarTrack}>
+                  <View style={[styles.verifiedBarFill, { width: `${verifiedPct}%` }]} />
+                </View>
+                <Text style={styles.verifiedPct}>{verifiedPct}%</Text>
+              </View>
+              <View style={styles.verifiedLegend}>
+                <Text style={styles.verifiedLegendText}>✅ {overview?.verifiedUsers} verificados</Text>
+                <Text style={styles.verifiedLegendText}>⏳ {overview?.unverifiedUsers} pendentes</Text>
+              </View>
+            </Section>
 
-        {categories.length > 0 && (
-          <Section title={`Categorias (${categories.length})`}>
-            <DonutLegend data={categories} labelKey="category" valueKey="count" labelWidth={124} />
-          </Section>
-        )}
+            {/* ─── Perfis de viajante ─── */}
+            {profiles.length > 0 && (
+              <Section title="Perfis de viajante">
+                <DonutLegend data={profiles} labelKey="profile" valueKey="count" />
+              </Section>
+            )}
 
-        {/* Ranking e nao grafico de barras: nome de ponto turistico e longo
-            demais para o rotulo estreito do BarChart, e quando os locais
-            empatam em contagem todas as barras ficam cheias e nao comparam
-            nada. */}
-        {visited.length > 0 && (
-          <Section title="Locais que mais aparecem em roteiros">
-            <RankList
-              items={visited.map(p => ({
-                title: p.name,
-                value: p.count,
-                valueLabel: p.count === 1 ? 'roteiro' : 'roteiros',
-              }))}
-            />
-          </Section>
-        )}
+            {/* ─── Faixas etárias ─── */}
+            {ageGroups.filter(g => g.count > 0).length > 0 && (
+              <Section title="Faixas etárias">
+                <BarChart data={ageGroups.filter(g => g.count > 0)} labelKey="group" valueKey="count" />
+              </Section>
+            )}
 
-        {topRated.length > 0 && (
-          <Section title="Locais com melhor avaliação">
-            <RankList
-              items={topRated.map(p => ({
-                title: p.name,
-                subtitle: `${p.totalRatings} ${p.totalRatings === 1 ? 'avaliação' : 'avaliações'}`,
-                value: umaCasa(p.avgRating),
-                valueLabel: 'de 5',
-              }))}
-            />
-          </Section>
-        )}
+            {/* ─── Países ─── */}
+            {countries.length > 0 && (
+              <Section title={`Países (${countries.length} países)`}>
+                <BarChart data={countries} labelKey="country" valueKey="count" />
+              </Section>
+            )}
 
-        {commented.length > 0 && (
-          <Section title="Locais mais comentados">
-            <RankList
-              items={commented.map(p => ({
-                title: p.name,
-                value: p.commentCount,
-                valueLabel: p.commentCount === 1 ? 'comentário' : 'comentários',
-              }))}
-            />
-          </Section>
-        )}
+            {/* ══════════════ Roteiros ══════════════ */}
+            <BlockTitle>Roteiros</BlockTitle>
 
-      </ScrollView>
-    </SafeAreaView>
+            <View style={styles.statsGrid}>
+              <StatCard icon="🗺️" label="Roteiros criados"  value={itinerary?.totalItineraries ?? 0} color="#D97706" />
+              <StatCard icon="📅" label="Duração média"     value={`${umaCasa(itinerary?.avgDurationDays)} dias`} color="#0891B2" />
+              <StatCard icon="⭐" label="Nota média"        value={`${umaCasa(itinerary?.avgRating)} / 5`} color="#7C3AED" />
+              <StatCard icon="📝" label="Avaliados"         value={itinerary?.ratedCount ?? 0} color="#16A34A"
+                        sub={`${itinerary?.unratedCount ?? 0} sem avaliação`} />
+            </View>
+
+            {perMonth.length > 0 && (
+              <Section title="Roteiros criados por mês">
+                <BarChart data={perMonth} labelKey="month" valueKey="count" limit={12} />
+              </Section>
+            )}
+
+            {/* ─── Clientes com mais roteiros ─── */}
+            {/* O ranking chega do servidor já cortado em dez e sem os clientes
+                zerados: a tela não filtra nem recorta nada. */}
+            {perClient && perClient.topClients.length > 0 && (
+              <Section title="Clientes com mais roteiros">
+                <RankList
+                  items={perClient.topClients.map(c => ({
+                    title: c.user,
+                    subtitle: c.email,
+                    value: c.count,
+                    valueLabel: c.count === 1 ? 'roteiro' : 'roteiros',
+                  }))}
+                />
+              </Section>
+            )}
+
+            {/* ─── Cobertura de roteiros entre os clientes ─── */}
+            {perClient && perClient.clientsWithoutItinerary > 0 && (
+              <Section title="Clientes sem roteiro">
+                <View style={styles.noItineraryBox}>
+                  <Text style={styles.noItineraryCount}>{perClient.clientsWithoutItinerary}</Text>
+                  <Text style={styles.noItineraryLabel}>
+                    clientes ainda não geraram nenhum roteiro
+                  </Text>
+                  <Text style={styles.noItinerarySub}>
+                    {perClient.clientsWithItinerary} já geraram pelo menos um
+                  </Text>
+                </View>
+              </Section>
+            )}
+
+            {/* ══════════════ Locais ══════════════ */}
+            <BlockTitle>Locais</BlockTitle>
+
+            {categories.length > 0 && (
+              <Section title={`Categorias (${categories.length})`}>
+                <DonutLegend data={categories} labelKey="category" valueKey="count" labelWidth={124} />
+              </Section>
+            )}
+
+            {/* Ranking e nao grafico de barras: nome de ponto turistico e longo
+                demais para o rotulo estreito do BarChart, e quando os locais
+                empatam em contagem todas as barras ficam cheias e nao comparam
+                nada. */}
+            {visited.length > 0 && (
+              <Section title="Locais que mais aparecem em roteiros">
+                <RankList
+                  items={visited.map(p => ({
+                    title: p.name,
+                    value: p.count,
+                    valueLabel: p.count === 1 ? 'roteiro' : 'roteiros',
+                  }))}
+                />
+              </Section>
+            )}
+
+            {topRated.length > 0 && (
+              <Section title="Locais com melhor avaliação">
+                <RankList
+                  items={topRated.map(p => ({
+                    title: p.name,
+                    subtitle: `${p.totalRatings} ${p.totalRatings === 1 ? 'avaliação' : 'avaliações'}`,
+                    value: umaCasa(p.avgRating),
+                    valueLabel: 'de 5',
+                  }))}
+                />
+              </Section>
+            )}
+
+            {commented.length > 0 && (
+              <Section title="Locais mais comentados">
+                <RankList
+                  items={commented.map(p => ({
+                    title: p.name,
+                    value: p.commentCount,
+                    valueLabel: p.commentCount === 1 ? 'comentário' : 'comentários',
+                  }))}
+                />
+              </Section>
+            )}
+
+          </ScrollView>
+        </SafeAreaView>
+        );
+      }}
+    </AsyncBoundary>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F4F6F9' },
   container: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
-  loadingText: { fontSize: 14, color: '#6B7280' },
-  errorIcon: { fontSize: 48 },
-  errorText: { fontSize: 15, color: '#374151', textAlign: 'center' },
-  retryBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  retryText: { color: '#fff', fontWeight: '700' },
 
   header: { marginBottom: 20, paddingTop: 8 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#111827' },

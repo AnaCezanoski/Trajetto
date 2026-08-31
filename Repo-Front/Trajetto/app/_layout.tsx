@@ -60,12 +60,18 @@ function RootLayoutNav() {
     const currentSegment = segments[0] ?? '';
     const publicRoutes = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'ResetPasswordScreen', 'VerifyEmailScreen'];
     const inPublic = publicRoutes.includes(currentSegment);
+    // Vitrine do padrão de feedback: não mostra dado de ninguém e precisa abrir direto,
+    // logado ou não, para servir de demonstração.
+    // String() porque a lista de rotas conhecidas so e regerada quando o expo roda.
+    const inDemo = String(currentSegment) === 'DemoFeedbackScreen';
     const inQuizFlow = ['TravelerTestScreen', 'QuizScreen', 'QuizResultScreen'].includes(currentSegment);
     const inTabs = currentSegment === '(tabs)';
 
     const needsQuiz = !user?.isAdmin && (!user?.travelerProfile || user.travelerProfile === 'SKIPPED');
 
-    if (!user && !inPublic) {
+    if (inDemo) {
+      // deixa passar
+    } else if (!user && !inPublic) {
       router.replace('/LoginScreen');
     } else if (user && inPublic) {
       if (user.isAdmin) {
@@ -108,6 +114,7 @@ function RootLayoutNav() {
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
         <Stack.Screen name="AdminPanelScreen" options={{ headerShown: false }} />
         <Stack.Screen name="DashboardScreen" options={{ headerShown: false }} />
+        <Stack.Screen name="DemoFeedbackScreen" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

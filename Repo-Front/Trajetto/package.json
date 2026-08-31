@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test:arquitetura": "node ./scripts/teste-arquitetura.js"
+    "test:arquitetura": "node ./scripts/teste-arquitetura.js",
+    "test:feedback": "node ./scripts/teste-feedback.js"
   },
   "dependencies": {
     "@expo-google-fonts/fugaz-one": "^0.4.1",

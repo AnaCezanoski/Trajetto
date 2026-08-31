@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   SafeAreaView, View, Text, FlatList,
-  TouchableOpacity, StyleSheet, Alert, ActivityIndicator,
+  TouchableOpacity, StyleSheet, Alert, RefreshControl,
 } from 'react-native';
 import { userService } from '../services';
+import { AsyncBoundary, useAsyncData } from '../components/feedback';
 import { getErrorMessage } from '../utils/apiError';
 import { User } from '../types/user';
 import { useAuth } from '../context/AuthContext';
@@ -15,35 +16,25 @@ const PRIMARY = '#023665';
 export default function UserListScreen() {
   const { user: admin, logout } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      setUsers(await userService.getAll());
-    } catch (e) {
-      Alert.alert('Erro', getErrorMessage(e, 'NÃ£o foi possÃ­vel carregar os usuÃ¡rios.'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // A tela diz só o que buscar. Carregando, erro e vazio são cuidados pelo padrão de feedback.
+  const usuarios = useAsyncData(() => userService.getAll(), [], { auto: false });
+  const { reload: recarregar } = usuarios;
 
-  useFocusEffect(
-    useCallback(() => { fetchUsers(); }, [])
-  );
+  // Recarrega toda vez que a tela volta ao foco: voltar da edição precisa mostrar o dado novo.
+  useFocusEffect(useCallback(() => { recarregar(); }, [recarregar]));
 
   const deleteUser = (id: number, name: string) => {
-    Alert.alert('Excluir usuÃ¡rio', `Deseja excluir ${name}?`, [
+    Alert.alert('Excluir usuário', `Deseja excluir ${name}?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir', style: 'destructive', onPress: async () => {
           try {
             await userService.remove(id);
-            fetchUsers();
+            usuarios.reload();
           } catch (e) {
-            // Ex.: "Um administrador nÃ£o pode remover a si mesmo."
-            Alert.alert('Erro', getErrorMessage(e, 'NÃ£o foi possÃ­vel excluir o usuÃ¡rio.'));
+            // Ex.: "Um administrador não pode remover a si mesmo."
+            Alert.alert('Erro', getErrorMessage(e, 'Não foi possível excluir o usuário.'));
           }
         },
       },
@@ -56,63 +47,73 @@ export default function UserListScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Painel Admin</Text>
-          <Text style={styles.headerSub}>OlÃ¡, {admin?.firstName} ðŸ›¡ï¸</Text>
+          <Text style={styles.headerSub}>Olá, {admin?.firstName} 🛡️</Text>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
           <Text style={styles.logoutText}>Sair</Text>
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={PRIMARY} />
-          <Text style={styles.loadingText}>Carregando usuÃ¡rios...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item, index) => item.id != null ? String(item.id) : String(index)}
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <Text style={styles.sectionLabel}>USUÃRIOS ({users.length})</Text>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardLeft}>
-                <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarEmoji}>ðŸ‘¤</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>{item.firstName} {item.lastName}</Text>
-                  <Text style={styles.cardEmail}>{item.email}</Text>
-                  <Text style={styles.cardMeta}>{item.country}{item.telephone ? ` Â· ${item.telephone}` : ''}</Text>
-                  <View style={[styles.roleBadge, item.isAdmin && styles.roleBadgeAdmin]}>
-                    <Text style={[styles.roleBadgeText, item.isAdmin && styles.roleBadgeTextAdmin]}>
-                      {item.isAdmin ? 'ðŸ›¡ï¸ Admin' : 'ðŸ‘¤ UsuÃ¡rio'}
-                    </Text>
+      <AsyncBoundary
+        state={usuarios}
+        onRetry={usuarios.reload}
+        loading={{ title: 'Carregando usuários...' }}
+        error={{ title: 'Não foi possível carregar os usuários' }}
+        empty={{
+          icon: '👥',
+          title: 'Nenhum usuário cadastrado',
+          message: 'Assim que alguém criar uma conta, a pessoa aparece nesta lista.',
+        }}
+      >
+        {(lista) => (
+          <FlatList
+            data={lista}
+            keyExtractor={(item, index) => item.id != null ? String(item.id) : String(index)}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl refreshing={usuarios.refreshing} onRefresh={usuarios.reload} tintColor={PRIMARY} />
+            }
+            ListHeaderComponent={
+              <Text style={styles.sectionLabel}>USUÁRIOS ({lista.length})</Text>
+            }
+            renderItem={({ item }: { item: User }) => (
+              <View style={styles.card}>
+                <View style={styles.cardLeft}>
+                  <View style={styles.avatarCircle}>
+                    <Text style={styles.avatarEmoji}>👤</Text>
+                  </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardName}>{item.firstName} {item.lastName}</Text>
+                    <Text style={styles.cardEmail}>{item.email}</Text>
+                    <Text style={styles.cardMeta}>{item.country}{item.telephone ? ` · ${item.telephone}` : ''}</Text>
+                    <View style={[styles.roleBadge, item.isAdmin && styles.roleBadgeAdmin]}>
+                      <Text style={[styles.roleBadgeText, item.isAdmin && styles.roleBadgeTextAdmin]}>
+                        {item.isAdmin ? '🛡️ Admin' : '👤 Usuário'}
+                      </Text>
+                    </View>
                   </View>
                 </View>
+                <View style={styles.cardActions}>
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={() => router.push({ pathname: '/UserDetailScreen', params: { user: JSON.stringify(item) } })}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.editBtnText}>Editar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => deleteUser(item.id, item.firstName)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.deleteBtnIcon}>🗑️</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.cardActions}>
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => router.push({ pathname: '/UserDetailScreen', params: { user: JSON.stringify(item) } })}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.editBtnText}>Editar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => deleteUser(item.id, item.firstName)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.deleteBtnIcon}>ðŸ—‘ï¸</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        />
-      )}
+            )}
+          />
+        )}
+      </AsyncBoundary>
     </SafeAreaView>
   );
 }
@@ -139,9 +140,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   logoutText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f4f6f9' },
-  loadingText: { marginTop: 12, fontSize: 15, color: '#888' },
 
   list: { padding: 20, paddingBottom: 32, backgroundColor: '#f4f6f9', flexGrow: 1 },
 
