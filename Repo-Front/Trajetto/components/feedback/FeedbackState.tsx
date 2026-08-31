@@ -1,8 +1,5 @@
-// A aparência única dos avisos do app: carregando, erro e vazio.
-//
-// Todo aviso tem a mesma anatomia — um símbolo, um título curto, uma mensagem que orienta
-// o que fazer e, quando faz sentido, um botão que tira o usuário da situação. Telas não
-// desenham spinner nem tela de erro por conta própria: elas usam este componente.
+// A aparência única dos avisos do app. Todo aviso tem a mesma anatomia: símbolo, título
+// curto, mensagem que orienta e, quando faz sentido, um botão que oferece uma saída.
 
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -15,9 +12,7 @@ export type FeedbackVariant = 'loading' | 'error' | 'empty';
 export interface FeedbackCopy {
   icon?: string;
   title?: string;
-  /** Mensagem orientativa: diz ao usuário o que aconteceu e o que ele pode fazer. */
   message?: string;
-  /** Ação de recuperação: o botão que oferece uma saída. */
   actionLabel?: string;
   onAction?: () => void;
 }
@@ -26,7 +21,7 @@ export interface FeedbackStateProps extends FeedbackCopy {
   variant: FeedbackVariant;
 }
 
-// Palavras padrão. Servem para qualquer tela; a tela só escreve o que for específico dela.
+// Palavras padrão: a tela só escreve o que for específico dela.
 const PADRAO: Record<FeedbackVariant, Required<Pick<FeedbackCopy, 'icon' | 'title' | 'message'>> & { actionLabel: string }> = {
   loading: {
     icon: '',
@@ -53,7 +48,7 @@ export function FeedbackState({
 }: FeedbackStateProps) {
   const padrao = PADRAO[variant];
   const textoDaAcao = actionLabel ?? padrao.actionLabel;
-  // O botão só aparece quando existe para onde ir: sem ação, ele seria enfeite.
+  // Sem ação para onde ir, o botão seria enfeite.
   const mostrarAcao = Boolean(onAction && textoDaAcao);
 
   return (

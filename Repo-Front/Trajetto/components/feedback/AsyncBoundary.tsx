@@ -1,8 +1,5 @@
-// Liga o estado de uma busca à aparência dos avisos.
-//
-// A tela entrega o que sabe sobre a busca e o que desenhar quando há conteúdo; quem escolhe
-// entre carregando, erro e vazio é este componente. Assim nenhuma tela repete a decisão nem
-// o desenho do aviso — as duas coisas ficam em um lugar só.
+// Liga o estado de uma busca à aparência dos avisos: a tela entrega o que sabe da busca e
+// o que desenhar quando há conteúdo; a escolha do aviso acontece aqui.
 
 import React, { ReactNode } from 'react';
 import { getErrorMessage } from '../../utils/apiError';
@@ -12,9 +9,9 @@ import { RequestState, resolveFeedbackStatus } from './feedbackStatus';
 export interface AsyncBoundaryProps<T> {
   /** O que se sabe sobre a busca — normalmente o retorno de useAsyncData. */
   state: RequestState<T>;
-  /** Ação de recuperação oferecida no erro e no vazio. Sem ela, o aviso não mostra botão. */
+  /** Ação oferecida no erro e no vazio. Sem ela, o aviso não mostra botão. */
   onRetry?: () => void;
-  /** Palavras específicas desta tela. O que não for informado usa o texto padrão do app. */
+  /** Palavras desta tela. O que não for informado usa o texto padrão do app. */
   loading?: FeedbackCopy;
   error?: FeedbackCopy;
   empty?: FeedbackCopy;
@@ -34,9 +31,8 @@ export function AsyncBoundary<T>({
   }
 
   if (status === 'error') {
-    // A mensagem que o backend mandou explica a falha melhor do que qualquer texto genérico
-    // (e o contrato de erro já cuida de traduzir "sem rede" e afins). O texto da tela entra
-    // só quando ela quis dizer algo específico.
+    // A mensagem do backend explica a falha melhor que um texto genérico; o texto da tela
+    // entra só quando ela quis dizer algo específico.
     const { message: mensagemDaTela, ...restoDoErro } = error ?? {};
 
     return (

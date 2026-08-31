@@ -1,8 +1,5 @@
-// Porta de entrada do padrão de feedback.
-//
-// Telas importam daqui ('../components/feedback') e não precisam conhecer como o estado é
-// guardado nem como o aviso é desenhado. Trocar o visual dos avisos ou a regra de quando
-// cada um aparece é mexer só dentro desta pasta.
+// Porta de entrada do padrão de feedback: as telas importam daqui e não precisam conhecer
+// como o estado é guardado nem como o aviso é desenhado.
 
 export { AsyncBoundary } from './AsyncBoundary';
 export type { AsyncBoundaryProps } from './AsyncBoundary';

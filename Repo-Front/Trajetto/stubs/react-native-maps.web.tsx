@@ -1,10 +1,6 @@
-// Substituto do react-native-maps quando o app roda no navegador.
-//
-// A biblioteca de mapas é só para celular: ela chega no código nativo do Android e do iOS,
-// que não existe na web, e por isso derrubava o empacotamento inteiro — mesmo em telas que
-// nada têm a ver com mapa. Aqui as peças viram um espaço reservado, o app abre no navegador
-// e o mapa de verdade continua igual no celular.
-
+// Substituto do react-native-maps quando o app roda no navegador. A biblioteca é só de
+// celular e derrubava o empacotamento inteiro na web, mesmo em telas sem mapa. Aqui vira um
+// espaço reservado; no celular o mapa continua igual.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
