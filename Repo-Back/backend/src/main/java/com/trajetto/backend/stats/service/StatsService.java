@@ -1,6 +1,7 @@
 package com.trajetto.backend.stats.service;
 
 import com.trajetto.backend.stats.dto.*;
+import com.trajetto.backend.stats.repository.ItineraryOverviewStatsRepository;
 import com.trajetto.backend.stats.repository.ItineraryStatsRepository;
 import com.trajetto.backend.stats.repository.PlaceStatsRepository;
 import com.trajetto.backend.stats.repository.RatingStatsRepository;
@@ -16,18 +17,18 @@ import java.util.List;
 /**
  * Fonte dos indicadores do painel gerencial.
  *
- * <p>A regra desta camada e simples: agrupar, contar e ordenar sao trabalho
- * do banco; o que sobra aqui e apresentacao -- traduzir mes para portugues,
- * montar a lista fixa de faixas etarias, arredondar media para uma casa. Em
- * nenhum ponto uma tabela inteira e carregada para ser percorrida em
- * memoria, que era como o painel funcionava antes.</p>
+ * <p>A regra desta camada e simples: agrupar, contar, ordenar e recortar sao
+ * trabalho do banco; o que sobra aqui e apresentacao -- traduzir mes para
+ * portugues e montar a lista fixa de faixas etarias. Em nenhum ponto uma
+ * tabela inteira e carregada para ser percorrida em memoria, e nenhum
+ * endpoint devolve mais linhas do que o painel exibe.</p>
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class StatsService {
 
-    /** Quantos lugares os rankings do painel exibem. */
+    /** Quantas linhas os rankings do painel exibem. */
     private static final int TAMANHO_DO_RANKING = 10;
 
     private static final String[] MESES_ABREVIADOS =
@@ -35,6 +36,7 @@ public class StatsService {
 
     private final UserOverviewStatsRepository userOverviewStatsRepository;
     private final UserStatsRepository userStatsRepository;
+    private final ItineraryOverviewStatsRepository itineraryOverviewStatsRepository;
     private final ItineraryStatsRepository itineraryStatsRepository;
     private final PlaceStatsRepository placeStatsRepository;
     private final RatingStatsRepository ratingStatsRepository;
@@ -64,10 +66,6 @@ public class StatsService {
                 .toList();
     }
 
-    public List<ItinerariesPerUserDTO> getItinerariesPerUser() {
-        return userStatsRepository.countItinerariesPerUser();
-    }
-
     /**
      * Monta as sete faixas etárias na ordem fixa do painel a partir da linha
      * única devolvida pelo banco, incluindo as faixas zeradas — que um
@@ -88,22 +86,33 @@ public class StatsService {
 
     // ─── Roteiros ──────────────────────────────────────────────────────────
 
+    /**
+     * Cartões de roteiros, calculados pela stored procedure — mesma razão de
+     * {@code getUserOverview} para não marcar a transação como somente
+     * leitura.
+     */
+    @Transactional
     public ItineraryOverviewDTO getItineraryOverview() {
-        List<Object[]> linhas = itineraryStatsRepository.overviewRow();
-        if (linhas.isEmpty()) {
-            return new ItineraryOverviewDTO(0, null, null, 0, 0);
+        return itineraryOverviewStatsRepository.fetchOverview();
+    }
+
+    /**
+     * Bloco "roteiros por cliente": o ranking e os dois totais que o painel
+     * mostra ao lado dele. São duas consultas agregadas, e cada uma devolve
+     * exatamente o que a tela exibe — antes era uma só, devolvendo a lista
+     * de todos os clientes para o app recortar e contar.
+     */
+    public ItinerariesPerUserPanelDTO getItinerariesPerUser() {
+        List<ItinerariesPerUserDTO> ranking = userStatsRepository
+                .findTopClientsByItineraryCount(PageRequest.of(0, TAMANHO_DO_RANKING));
+
+        List<Object[]> cobertura = userStatsRepository.countClientItineraryCoverage();
+        if (cobertura.isEmpty()) {
+            return new ItinerariesPerUserPanelDTO(ranking, 0, 0);
         }
 
-        Object[] linha = linhas.get(0);
-        long total      = asLong(linha[0]);
-        long avaliados  = asLong(linha[3]);
-
-        return new ItineraryOverviewDTO(
-                total,
-                arredondaUmaCasa(linha[1]),
-                arredondaUmaCasa(linha[2]),
-                avaliados,
-                total - avaliados);
+        Object[] linha = cobertura.get(0);
+        return new ItinerariesPerUserPanelDTO(ranking, asLong(linha[0]), asLong(linha[1]));
     }
 
     public List<MonthCountDTO> getItinerariesPerMonth() {
@@ -166,17 +175,5 @@ public class StatsService {
 
     static double asDouble(Object valor) {
         return valor == null ? 0d : ((Number) valor).doubleValue();
-    }
-
-    /**
-     * Médias do painel são exibidas com uma casa decimal. Nulo é resposta
-     * legítima: significa que não havia nenhum roteiro com data completa ou
-     * com nota para entrar na média.
-     */
-    static Double arredondaUmaCasa(Object valor) {
-        if (valor == null) {
-            return null;
-        }
-        return Math.round(((Number) valor).doubleValue() * 10.0) / 10.0;
     }
 }

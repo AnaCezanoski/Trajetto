@@ -41,8 +41,14 @@ public class UserOverviewStatsRepository {
     public UserOverviewDTO fetchOverview() {
         StoredProcedureQuery procedure = entityManager.createStoredProcedureQuery(PROCEDURE_NAME);
         procedure.execute();
+        return toDTO(procedure.getResultList());
+    }
 
-        List<?> rows = procedure.getResultList();
+    /**
+     * Leitura da linha devolvida pela procedure, separada da chamada para
+     * poder ser verificada sem um banco por perto.
+     */
+    static UserOverviewDTO toDTO(List<?> rows) {
         if (rows.isEmpty()) {
             return new UserOverviewDTO(0, 0, 0, 0, 0, 0, null);
         }

@@ -18,8 +18,15 @@ public class RatingModel {
     @Column(name = "user_name")
     private String userName;
 
+    @Column(nullable = false)
     private String touristSpotXid;
 
+    /**
+     * Autor da avaliacao. Guardado como identificador solto, sem associacao
+     * mapeada -- por isso o Hibernate nunca criou a chave estrangeira, que a
+     * migracao V6 passou a declarar diretamente no esquema.
+     */
+    @Column(nullable = false)
     private Long userId;
 
     private int rating;

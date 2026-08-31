@@ -4,6 +4,7 @@ import com.trajetto.backend.stats.dto.AgeGroupBreakdownDTO;
 import com.trajetto.backend.stats.dto.CountryCountDTO;
 import com.trajetto.backend.stats.dto.ItinerariesPerUserDTO;
 import com.trajetto.backend.user.model.UserModel;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 
@@ -65,27 +66,61 @@ public interface UserStatsRepository extends Repository<UserModel, Long> {
     List<Object[]> countByTravelerProfile();
 
     /**
-     * Roteiros por cliente.
+     * Ranking dos clientes que mais criaram roteiros.
      *
      * <p>Este era o pior ponto do painel: para cada usuario a aplicacao
      * disparava uma consulta de roteiros e contava o tamanho da lista em
      * Java (N+1 consultas, e cada roteiro vinha inteiro so para ser
-     * contado). Agora e um LEFT JOIN agrupado: uma consulta, uma linha por
-     * usuario, so o numero.</p>
+     * contado). A BE02.1 trocou isso por um JOIN agrupado; o que sobrou, e
+     * que esta consulta resolve, era o recorte: o servidor devolvia uma
+     * linha por cliente cadastrado e o app cortava as dez primeiras na
+     * tela.</p>
      *
-     * <p>O LEFT JOIN mantem no resultado o cliente que ainda nao criou
-     * nenhum roteiro, com contagem zero.</p>
+     * <p>O {@link Pageable} vira {@code LIMIT}, entao o banco descarta o
+     * resto em vez de mandar a base inteira pela rede. E o JOIN e interno,
+     * nao mais LEFT: o ranking so exibe quem tem roteiro, entao o cliente
+     * sem nenhum nao precisa nem entrar no agrupamento -- quantos ficaram de
+     * fora e assunto de {@link #countClientItineraryCoverage()}.</p>
      */
     @Query("""
             SELECT new com.trajetto.backend.stats.dto.ItinerariesPerUserDTO(
                        CONCAT(u.firstName, ' ', u.lastName), u.email, COUNT(i.id))
             FROM UserModel u
-            LEFT JOIN ItineraryModel i ON i.user = u
-            WHERE u.isAdmin IS NULL OR u.isAdmin = FALSE
+            JOIN ItineraryModel i ON i.user = u
+            WHERE (u.isAdmin IS NULL OR u.isAdmin = FALSE)
             GROUP BY u.id, u.firstName, u.lastName, u.email
             ORDER BY COUNT(i.id) DESC, u.firstName ASC
             """)
-    List<ItinerariesPerUserDTO> countItinerariesPerUser();
+    List<ItinerariesPerUserDTO> findTopClientsByItineraryCount(Pageable pageable);
+
+    /**
+     * Quantos clientes ja criaram algum roteiro e quantos ainda nao.
+     *
+     * <p>O painel mostrava o segundo numero contando, na propria tela,
+     * quantas linhas da lista de clientes vinham com zero. Era a ultima
+     * agregacao que ainda acontecia fora do banco -- e a mais cara, porque
+     * obrigava o endpoint a devolver a base inteira de clientes so para o
+     * app medir uma fatia dela.</p>
+     *
+     * <p>A consulta e um agregado sobre um agrupamento: a subconsulta conta
+     * os roteiros de cada cliente, e a consulta de fora conta quantos
+     * clientes cairam de cada lado. Nativa porque JPQL nao tem tabela
+     * derivada.</p>
+     *
+     * <p>Colunas, na ordem: com roteiro, sem roteiro.</p>
+     */
+    @Query(value = """
+            SELECT COALESCE(SUM(c.total > 0), 0) AS clients_with_itinerary,
+                   COALESCE(SUM(c.total = 0), 0) AS clients_without_itinerary
+            FROM (
+                SELECT COUNT(i.id) AS total
+                FROM users u
+                LEFT JOIN itineraries i ON i.user_id = u.code
+                WHERE u.isAdmin IS NULL OR u.isAdmin = 0
+                GROUP BY u.code
+            ) c
+            """, nativeQuery = true)
+    List<Object[]> countClientItineraryCoverage();
 
     /**
      * Faixas etarias em uma linha so.
