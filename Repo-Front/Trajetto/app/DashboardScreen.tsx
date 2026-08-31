@@ -35,7 +35,9 @@ function BarChart({ data, labelKey, valueKey, limit = 8 }: {
 }
 
 // ─── Donut chart simples ──────────────────────────────────
-function DonutLegend({ data, labelKey, valueKey }: { data: any[]; labelKey: string; valueKey: string }) {
+function DonutLegend({ data, labelKey, valueKey, labelWidth = 90 }: {
+  data: any[]; labelKey: string; valueKey: string; labelWidth?: number;
+}) {
   const total = data.reduce((acc, d) => acc + d[valueKey], 0);
   return (
     <View style={styles.donutLegend}>
@@ -44,7 +46,7 @@ function DonutLegend({ data, labelKey, valueKey }: { data: any[]; labelKey: stri
         return (
           <View key={i} style={styles.donutRow}>
             <View style={[styles.donutDot, { backgroundColor: COLORS[i % COLORS.length] }]} />
-            <Text style={styles.donutLabel} numberOfLines={1}>{item[labelKey]}</Text>
+            <Text style={[styles.donutLabel, { width: labelWidth }]} numberOfLines={1}>{item[labelKey]}</Text>
             <View style={styles.donutBarTrack}>
               <View style={[styles.donutBarFill, { width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] }]} />
             </View>
@@ -221,7 +223,6 @@ export default function DashboardScreen() {
           <StatCard icon="👥" label="Total de usuários" value={overview?.totalUsers ?? 0} color={PRIMARY} />
           <StatCard icon="👤" label="Clientes"          value={overview?.totalClients ?? 0} color="#2563EB" />
           <StatCard icon="🛡️" label="Administradores"  value={overview?.totalAdmins ?? 0}  color="#7C3AED" />
-          <StatCard icon="🗺️" label="Roteiros gerados" value={overview?.totalItineraries ?? 0} color="#D97706" />
           <StatCard icon="✅" label="Verificados"      value={overview?.verifiedUsers ?? 0}   color="#16A34A" sub={`${verifiedPct}% do total`} />
           <StatCard icon="⏳" label="Não verificados"  value={overview?.unverifiedUsers ?? 0} color="#DC2626" />
           {overview?.avgAge && (
@@ -317,13 +318,23 @@ export default function DashboardScreen() {
 
         {categories.length > 0 && (
           <Section title={`Categorias (${categories.length})`}>
-            <DonutLegend data={categories} labelKey="category" valueKey="count" />
+            <DonutLegend data={categories} labelKey="category" valueKey="count" labelWidth={124} />
           </Section>
         )}
 
+        {/* Ranking e nao grafico de barras: nome de ponto turistico e longo
+            demais para o rotulo estreito do BarChart, e quando os locais
+            empatam em contagem todas as barras ficam cheias e nao comparam
+            nada. */}
         {visited.length > 0 && (
           <Section title="Locais que mais aparecem em roteiros">
-            <BarChart data={visited} labelKey="name" valueKey="count" limit={10} />
+            <RankList
+              items={visited.map(p => ({
+                title: p.name,
+                value: p.count,
+                valueLabel: p.count === 1 ? 'roteiro' : 'roteiros',
+              }))}
+            />
           </Section>
         )}
 
