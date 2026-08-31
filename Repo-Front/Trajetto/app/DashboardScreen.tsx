@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  statsService, Overview, CountryStats,
-  ProfileStats, ItineraryStats, AgeGroupStats,
+  statsService, Overview, CountryStats, ProfileStats, AgeGroupStats,
+  ItinerariesPerUserPanel, ItineraryOverview, MonthStats, CategoryStats,
+  TopRatedPlace, MostCommentedPlace, MostVisitedPlace,
 } from '../services';
 import { getErrorMessage } from '../utils/apiError';
 
@@ -14,11 +15,13 @@ const PRIMARY = '#023665';
 const COLORS = ['#023665','#2563EB','#7C3AED','#DB2777','#D97706','#16A34A','#0891B2','#DC2626'];
 
 // ─── Mini bar chart ───────────────────────────────────────
-function BarChart({ data, labelKey, valueKey }: { data: any[]; labelKey: string; valueKey: string }) {
+function BarChart({ data, labelKey, valueKey, limit = 8 }: {
+  data: any[]; labelKey: string; valueKey: string; limit?: number;
+}) {
   const max = Math.max(...data.map(d => d[valueKey]), 1);
   return (
     <View style={styles.barChart}>
-      {data.slice(0, 8).map((item, i) => (
+      {data.slice(0, limit).map((item, i) => (
         <View key={i} style={styles.barRow}>
           <Text style={styles.barLabel} numberOfLines={1}>{item[labelKey]}</Text>
           <View style={styles.barTrack}>
@@ -32,7 +35,9 @@ function BarChart({ data, labelKey, valueKey }: { data: any[]; labelKey: string;
 }
 
 // ─── Donut chart simples ──────────────────────────────────
-function DonutLegend({ data, labelKey, valueKey }: { data: any[]; labelKey: string; valueKey: string }) {
+function DonutLegend({ data, labelKey, valueKey, labelWidth = 90 }: {
+  data: any[]; labelKey: string; valueKey: string; labelWidth?: number;
+}) {
   const total = data.reduce((acc, d) => acc + d[valueKey], 0);
   return (
     <View style={styles.donutLegend}>
@@ -41,7 +46,7 @@ function DonutLegend({ data, labelKey, valueKey }: { data: any[]; labelKey: stri
         return (
           <View key={i} style={styles.donutRow}>
             <View style={[styles.donutDot, { backgroundColor: COLORS[i % COLORS.length] }]} />
-            <Text style={styles.donutLabel} numberOfLines={1}>{item[labelKey]}</Text>
+            <Text style={[styles.donutLabel, { width: labelWidth }]} numberOfLines={1}>{item[labelKey]}</Text>
             <View style={styles.donutBarTrack}>
               <View style={[styles.donutBarFill, { width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length] }]} />
             </View>
@@ -68,6 +73,38 @@ function StatCard({ icon, label, value, color, sub }: {
   );
 }
 
+// ─── Ranking numerado ─────────────────────────────────────
+// Os rankings ja chegam prontos do servidor: dez linhas, na ordem que o
+// GROUP BY definiu. A tela so numera e desenha.
+type RankItem = { title: string; subtitle?: string; value: string | number; valueLabel?: string };
+
+function RankList({ items }: { items: RankItem[] }) {
+  return (
+    <View>
+      {items.map((item, i) => (
+        <View key={i} style={[styles.rankRow, i < items.length - 1 && styles.rankRowBorder]}>
+          <View style={[styles.rankBadge, { backgroundColor: COLORS[i % COLORS.length] }]}>
+            <Text style={styles.rankBadgeText}>{i + 1}</Text>
+          </View>
+          <View style={styles.rankInfo}>
+            <Text style={styles.rankName} numberOfLines={1}>{item.title}</Text>
+            {item.subtitle ? <Text style={styles.rankEmail} numberOfLines={1}>{item.subtitle}</Text> : null}
+          </View>
+          <View style={styles.rankCountBox}>
+            <Text style={styles.rankCount}>{item.value}</Text>
+            {item.valueLabel ? <Text style={styles.rankCountLabel}>{item.valueLabel}</Text> : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ─── Titulo de bloco ──────────────────────────────────────
+function BlockTitle({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.blockTitle}>{children}</Text>;
+}
+
 // ─── Section ─────────────────────────────────────────────
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -80,29 +117,51 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ─── Tela principal ───────────────────────────────────────
 export default function DashboardScreen() {
-  const [overview,    setOverview]    = useState<Overview | null>(null);
-  const [countries,   setCountries]   = useState<CountryStats[]>([]);
-  const [profiles,    setProfiles]    = useState<ProfileStats[]>([]);
-  const [itineraries, setItineraries] = useState<ItineraryStats[]>([]);
-  const [ageGroups,   setAgeGroups]   = useState<AgeGroupStats[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [refreshing,  setRefreshing]  = useState(false);
-  const [error,       setError]       = useState('');
+  // Usuários
+  const [overview,   setOverview]   = useState<Overview | null>(null);
+  const [countries,  setCountries]  = useState<CountryStats[]>([]);
+  const [profiles,   setProfiles]   = useState<ProfileStats[]>([]);
+  const [ageGroups,  setAgeGroups]  = useState<AgeGroupStats[]>([]);
+  // Roteiros
+  const [perClient,  setPerClient]  = useState<ItinerariesPerUserPanel | null>(null);
+  const [itinerary,  setItinerary]  = useState<ItineraryOverview | null>(null);
+  const [perMonth,   setPerMonth]   = useState<MonthStats[]>([]);
+  // Locais
+  const [categories, setCategories] = useState<CategoryStats[]>([]);
+  const [visited,    setVisited]    = useState<MostVisitedPlace[]>([]);
+  const [topRated,   setTopRated]   = useState<TopRatedPlace[]>([]);
+  const [commented,  setCommented]  = useState<MostCommentedPlace[]>([]);
+
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error,      setError]      = useState('');
 
   const load = async () => {
     try {
-      const [ov, co, pr, it, ag] = await Promise.all([
+      const [ov, co, pr, ag, cli, itin, mes, cat, vis, top, com] = await Promise.all([
         statsService.getOverview(),
         statsService.getCountries(),
         statsService.getTravelerProfiles(),
-        statsService.getItinerariesPerUser(),
         statsService.getAgeGroups(),
+        statsService.getItinerariesPerUser(),
+        statsService.getItineraryOverview(),
+        statsService.getItinerariesPerMonth(),
+        statsService.getPlacesByCategory(),
+        statsService.getMostVisitedPlaces(),
+        statsService.getTopRatedPlaces(),
+        statsService.getMostCommentedPlaces(),
       ]);
       setOverview(ov);
       setCountries(co);
       setProfiles(pr);
-      setItineraries(it);
       setAgeGroups(ag);
+      setPerClient(cli);
+      setItinerary(itin);
+      setPerMonth(mes);
+      setCategories(cat);
+      setVisited(vis);
+      setTopRated(top);
+      setCommented(com);
       setError('');
     } catch (e) {
       setError(getErrorMessage(e, 'Não foi possível carregar os dados.'));
@@ -140,6 +199,10 @@ export default function DashboardScreen() {
   const verifiedPct = overview && overview.totalUsers > 0
     ? Math.round((overview.verifiedUsers / overview.totalUsers) * 100) : 0;
 
+  // Média nula não é zero: significa que não havia nada para entrar na conta.
+  const umaCasa = (valor: number | null | undefined) =>
+    valor === null || valor === undefined ? '—' : valor.toFixed(1);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -153,12 +216,13 @@ export default function DashboardScreen() {
           <Text style={styles.headerSub}>Visão geral da plataforma Trajetto</Text>
         </View>
 
-        {/* ─── Overview cards ─── */}
+        {/* ══════════════ Usuários ══════════════ */}
+        <BlockTitle>Usuários</BlockTitle>
+
         <View style={styles.statsGrid}>
           <StatCard icon="👥" label="Total de usuários" value={overview?.totalUsers ?? 0} color={PRIMARY} />
           <StatCard icon="👤" label="Clientes"          value={overview?.totalClients ?? 0} color="#2563EB" />
           <StatCard icon="🛡️" label="Administradores"  value={overview?.totalAdmins ?? 0}  color="#7C3AED" />
-          <StatCard icon="🗺️" label="Roteiros gerados" value={overview?.totalItineraries ?? 0} color="#D97706" />
           <StatCard icon="✅" label="Verificados"      value={overview?.verifiedUsers ?? 0}   color="#16A34A" sub={`${verifiedPct}% do total`} />
           <StatCard icon="⏳" label="Não verificados"  value={overview?.unverifiedUsers ?? 0} color="#DC2626" />
           {overview?.avgAge && (
@@ -201,38 +265,101 @@ export default function DashboardScreen() {
           </Section>
         )}
 
-        {/* ─── Roteiros por usuário ─── */}
-        {itineraries.filter(i => i.count > 0).length > 0 && (
-          <Section title="Usuários com mais roteiros">
-            <View>
-              {itineraries.filter(i => i.count > 0).slice(0, 10).map((item, i) => (
-                <View key={i} style={[styles.rankRow, i < itineraries.length - 1 && styles.rankRowBorder]}>
-                  <View style={[styles.rankBadge, { backgroundColor: COLORS[i % COLORS.length] }]}>
-                    <Text style={styles.rankBadgeText}>{i + 1}</Text>
-                  </View>
-                  <View style={styles.rankInfo}>
-                    <Text style={styles.rankName} numberOfLines={1}>{item.user}</Text>
-                    <Text style={styles.rankEmail} numberOfLines={1}>{item.email}</Text>
-                  </View>
-                  <View style={styles.rankCountBox}>
-                    <Text style={styles.rankCount}>{item.count}</Text>
-                    <Text style={styles.rankCountLabel}>{item.count === 1 ? 'roteiro' : 'roteiros'}</Text>
-                  </View>
-                </View>
-              ))}
+        {/* ══════════════ Roteiros ══════════════ */}
+        <BlockTitle>Roteiros</BlockTitle>
+
+        <View style={styles.statsGrid}>
+          <StatCard icon="🗺️" label="Roteiros criados"  value={itinerary?.totalItineraries ?? 0} color="#D97706" />
+          <StatCard icon="📅" label="Duração média"     value={`${umaCasa(itinerary?.avgDurationDays)} dias`} color="#0891B2" />
+          <StatCard icon="⭐" label="Nota média"        value={`${umaCasa(itinerary?.avgRating)} / 5`} color="#7C3AED" />
+          <StatCard icon="📝" label="Avaliados"         value={itinerary?.ratedCount ?? 0} color="#16A34A"
+                    sub={`${itinerary?.unratedCount ?? 0} sem avaliação`} />
+        </View>
+
+        {perMonth.length > 0 && (
+          <Section title="Roteiros criados por mês">
+            <BarChart data={perMonth} labelKey="month" valueKey="count" limit={12} />
+          </Section>
+        )}
+
+        {/* ─── Clientes com mais roteiros ─── */}
+        {/* O ranking chega do servidor já cortado em dez e sem os clientes
+            zerados: a tela não filtra nem recorta nada. */}
+        {perClient && perClient.topClients.length > 0 && (
+          <Section title="Clientes com mais roteiros">
+            <RankList
+              items={perClient.topClients.map(c => ({
+                title: c.user,
+                subtitle: c.email,
+                value: c.count,
+                valueLabel: c.count === 1 ? 'roteiro' : 'roteiros',
+              }))}
+            />
+          </Section>
+        )}
+
+        {/* ─── Cobertura de roteiros entre os clientes ─── */}
+        {perClient && perClient.clientsWithoutItinerary > 0 && (
+          <Section title="Clientes sem roteiro">
+            <View style={styles.noItineraryBox}>
+              <Text style={styles.noItineraryCount}>{perClient.clientsWithoutItinerary}</Text>
+              <Text style={styles.noItineraryLabel}>
+                clientes ainda não geraram nenhum roteiro
+              </Text>
+              <Text style={styles.noItinerarySub}>
+                {perClient.clientsWithItinerary} já geraram pelo menos um
+              </Text>
             </View>
           </Section>
         )}
 
-        {/* ─── Usuários sem roteiro ─── */}
-        {itineraries.filter(i => i.count === 0).length > 0 && (
-          <Section title="Usuários sem roteiro">
-            <View style={styles.noItineraryBox}>
-              <Text style={styles.noItineraryCount}>
-                {itineraries.filter(i => i.count === 0).length}
-              </Text>
-              <Text style={styles.noItineraryLabel}>usuários ainda não geraram nenhum roteiro</Text>
-            </View>
+        {/* ══════════════ Locais ══════════════ */}
+        <BlockTitle>Locais</BlockTitle>
+
+        {categories.length > 0 && (
+          <Section title={`Categorias (${categories.length})`}>
+            <DonutLegend data={categories} labelKey="category" valueKey="count" labelWidth={124} />
+          </Section>
+        )}
+
+        {/* Ranking e nao grafico de barras: nome de ponto turistico e longo
+            demais para o rotulo estreito do BarChart, e quando os locais
+            empatam em contagem todas as barras ficam cheias e nao comparam
+            nada. */}
+        {visited.length > 0 && (
+          <Section title="Locais que mais aparecem em roteiros">
+            <RankList
+              items={visited.map(p => ({
+                title: p.name,
+                value: p.count,
+                valueLabel: p.count === 1 ? 'roteiro' : 'roteiros',
+              }))}
+            />
+          </Section>
+        )}
+
+        {topRated.length > 0 && (
+          <Section title="Locais com melhor avaliação">
+            <RankList
+              items={topRated.map(p => ({
+                title: p.name,
+                subtitle: `${p.totalRatings} ${p.totalRatings === 1 ? 'avaliação' : 'avaliações'}`,
+                value: umaCasa(p.avgRating),
+                valueLabel: 'de 5',
+              }))}
+            />
+          </Section>
+        )}
+
+        {commented.length > 0 && (
+          <Section title="Locais mais comentados">
+            <RankList
+              items={commented.map(p => ({
+                title: p.name,
+                value: p.commentCount,
+                valueLabel: p.commentCount === 1 ? 'comentário' : 'comentários',
+              }))}
+            />
           </Section>
         )}
 
@@ -267,6 +394,12 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 26, fontWeight: '800', color: '#111827', marginBottom: 2 },
   statLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   statSub:   { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
+
+  // Block title
+  blockTitle: {
+    fontSize: 18, fontWeight: '800', color: '#111827',
+    marginTop: 12, marginBottom: 10, marginLeft: 2,
+  },
 
   // Section
   section: { marginBottom: 16 },
@@ -323,4 +456,5 @@ const styles = StyleSheet.create({
   noItineraryBox: { alignItems: 'center', paddingVertical: 8 },
   noItineraryCount: { fontSize: 40, fontWeight: '800', color: '#D97706' },
   noItineraryLabel: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 4 },
+  noItinerarySub:   { fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginTop: 2 },
 });

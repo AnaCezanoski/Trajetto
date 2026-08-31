@@ -17,6 +17,7 @@ import com.trajetto.backend.user.model.UserModel;
 import com.trajetto.backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -221,6 +222,20 @@ public class ItineraryService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Troca qual roteiro do usuário está ativo.
+     *
+     * <p>A regra de que um usuário tem no máximo um roteiro ativo agora é do
+     * banco: o índice único {@code uk_itineraries_active_per_user} (migração
+     * V4) não admite dois. Por isso a desativação vem primeiro e é
+     * descarregada antes da ativação — o roteiro que sai tem de largar a
+     * marca antes de o que entra assumi-la. A versão anterior percorria os
+     * roteiros em ordem de data e marcava cada um no caminho, então quando o
+     * alvo vinha antes do ativo atual os dois ficavam ativos ao mesmo tempo,
+     * e {@code getActiveItinerary} passava a devolver um dos dois conforme a
+     * ordem que o banco entregasse.</p>
+     */
+    @Transactional
     public ItineraryResponseDTO activateItinerary(Long itineraryId, Long userId) {
         UserModel user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário", userId));
@@ -229,12 +244,13 @@ public class ItineraryService {
         if (!target.getUser().getId().equals(userId)) {
             throw new ForbiddenOperationException("Este roteiro pertence a outro usuário.");
         }
-        itineraryRepository.findByUserOrderByStartDateDesc(user).forEach(it -> {
-            it.setActive(it.getId().equals(itineraryId));
-            itineraryRepository.save(it);
-        });
+
+        List<ItineraryModel> ativos = itineraryRepository.findByUserAndActiveTrue(user);
+        ativos.forEach(it -> it.setActive(false));
+        itineraryRepository.saveAllAndFlush(ativos);
+
         target.setActive(true);
-        return toDTO(target);
+        return toDTO(itineraryRepository.saveAndFlush(target));
     }
 
     public ItineraryResponseDTO updateRating(Long itineraryId, RatingRequestDTO req) {
