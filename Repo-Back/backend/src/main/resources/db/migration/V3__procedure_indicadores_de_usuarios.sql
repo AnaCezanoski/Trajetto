@@ -10,24 +10,6 @@
 -- A procedure devolve os sete numeros em uma unica linha, calculados
 -- dentro do banco. A aplicacao passa a trafegar uma linha em vez de N
 -- usuarios.
---
--- Observacoes sobre o calculo:
---
--- - isAdmin aceita NULL (o cadastro nem sempre envia o campo). Aqui o
---   NULL conta como cliente, entao admins + clientes sempre fecha com o
---   total de usuarios -- o que a versao anterior, baseada em
---   countByIsAdmin(false), nao garantia.
---
--- - A idade usa a diferenca entre os anos (YEAR(hoje) - YEAR(nascimento)),
---   e nao a idade completa, para manter o mesmo numero que o painel ja
---   exibia e continuar coerente com as faixas etarias de /stats/age-groups.
---
--- READS SQL DATA declara ao servidor que a rotina apenas consulta. Sem
--- isso o MySQL trata a chamada como potencialmente gravadora e a recusa em
--- conexao marcada como somente leitura.
---
--- O corpo e uma unica instrucao, sem BEGIN ... END, justamente para nao
--- depender de troca de DELIMITER na leitura do arquivo pelo Flyway.
 -- =====================================================================
 
 DROP PROCEDURE IF EXISTS sp_stats_user_overview;
