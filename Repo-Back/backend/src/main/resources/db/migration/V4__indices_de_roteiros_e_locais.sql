@@ -1,15 +1,7 @@
 -- =====================================================================
 -- V4 - Indices de roteiros e locais (BE02.2)
---
--- A V2 fez duas coisas do lado de usuarios e avaliacoes: subiu para o banco
--- regras de negocio que so existiam no Java (na forma de UNIQUE) e indexou as
--- colunas que o painel agrupa. Do lado de roteiros e locais so a segunda parte
--- foi feita, e feita de um jeito que duas das consultas nao conseguem
--- aproveitar. Esta migracao fecha as duas pontas.
 -- =====================================================================
 
-
--- ---------------------------------------------------------------------
 -- Regra: um usuario tem no maximo um roteiro ativo
 --
 -- A regra e antiga e esta espalhada pelo ItineraryService: gerar roteiro,
@@ -52,17 +44,8 @@ CREATE UNIQUE INDEX uk_itineraries_active_per_user ON itineraries (active_user_i
 
 -- ---------------------------------------------------------------------
 -- Regra: cada posicao de um roteiro e ocupada por um local so
---
--- order_index e a ordem de visita das paradas, e o roteiro e montado com
--- 0, 1, 2... sem repetir. ItineraryService.replacePlace assume isso: ele
--- procura a parada por order_index com findFirst(), entao com duas paradas
--- na mesma posicao ele trocaria uma das duas em silencio, escolhida pela
--- ordem em que a colecao veio.
 -- ---------------------------------------------------------------------
 
--- Limpeza: mantem a parada mais antiga de cada posicao. Em banco integro
--- nao apaga nenhuma linha -- nenhum caminho do codigo hoje grava duas
--- paradas com o mesmo order_index no mesmo roteiro.
 DELETE p FROM places p
 JOIN (
     SELECT itinerary_id, order_index, MIN(id) AS keep_id
@@ -79,10 +62,6 @@ CREATE UNIQUE INDEX uk_places_itinerary_order ON places (itinerary_id, order_ind
 
 -- ---------------------------------------------------------------------
 -- Indices de apoio as consultas agregadas de roteiros e locais
---
--- Tres indices da V2 sao substituidos aqui. Nenhum deles estava errado como
--- indice; o que estava errado era a forma, dado o que as consultas do painel
--- pedem.
 -- ---------------------------------------------------------------------
 
 -- /stats/itinerary-overview le start_date, end_date e rating na mesma
