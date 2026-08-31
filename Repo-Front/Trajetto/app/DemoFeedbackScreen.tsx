@@ -1,10 +1,7 @@
-// Vitrine do padrão de feedback: mostra os três estados lado a lado, sem depender do backend.
+// Tela de apoio para conferir os estados de carregamento, erro e vazio sem depender do
+// backend. Usa o mesmo hook e o mesmo AsyncBoundary das telas de verdade.
 //
-// Serve para conferir e demonstrar o padrão em segundos. Não usa cópia nem imitação dos
-// componentes: é o mesmo hook e o mesmo AsyncBoundary que as telas de verdade usam, então o
-// que aparece aqui é exatamente o que o usuário vê no app.
-//
-// Como abrir: npm run web e acesse /DemoFeedbackScreen
+// Abrir em: /DemoFeedbackScreen
 
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -14,14 +11,13 @@ const PRIMARY = '#023665';
 
 type Cenario = 'carregando' | 'erro' | 'vazio' | 'conteudo';
 
-const CENARIOS: { chave: Cenario; rotulo: string; explicacao: string }[] = [
-  { chave: 'carregando', rotulo: 'Carregando', explicacao: 'A busca começou e ainda não respondeu.' },
-  { chave: 'erro',       rotulo: 'Erro',       explicacao: 'A busca falhou. O aviso explica e oferece uma saída.' },
-  { chave: 'vazio',      rotulo: 'Vazio',      explicacao: 'A busca deu certo, mas não veio nada para mostrar.' },
-  { chave: 'conteudo',   rotulo: 'Conteúdo',   explicacao: 'O caminho normal: o aviso some e a tela aparece.' },
+const ROTULOS: { chave: Cenario; rotulo: string }[] = [
+  { chave: 'carregando', rotulo: 'Carregando' },
+  { chave: 'erro',       rotulo: 'Erro' },
+  { chave: 'vazio',      rotulo: 'Vazio' },
+  { chave: 'conteudo',   rotulo: 'Conteúdo' },
 ];
 
-// Cada cenário é só uma promessa que se comporta de um jeito. Nada de rede envolvido.
 const BUSCAS: Record<Cenario, () => Promise<string[]>> = {
   carregando: () => new Promise<string[]>(() => {}),
   erro:       () => Promise.reject(new Error('falha simulada')),
@@ -33,29 +29,23 @@ export default function DemoFeedbackScreen() {
   const [cenario, setCenario] = useState<Cenario>('carregando');
   const destinos = useAsyncData(() => BUSCAS[cenario](), [cenario]);
 
-  const atual = CENARIOS.find((c) => c.chave === cenario)!;
-
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Padrão de feedback</Text>
-        <Text style={styles.headerSub}>Toque em um estado para ver como o app responde</Text>
+        <Text style={styles.headerTitle}>Estados da tela</Text>
+        <View style={styles.abas}>
+          {ROTULOS.map(({ chave, rotulo }) => (
+            <TouchableOpacity
+              key={chave}
+              style={[styles.aba, cenario === chave && styles.abaAtiva]}
+              onPress={() => setCenario(chave)}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.abaTexto, cenario === chave && styles.abaTextoAtivo]}>{rotulo}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-
-      <View style={styles.abas}>
-        {CENARIOS.map(({ chave, rotulo }) => (
-          <TouchableOpacity
-            key={chave}
-            style={[styles.aba, cenario === chave && styles.abaAtiva]}
-            onPress={() => setCenario(chave)}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.abaTexto, cenario === chave && styles.abaTextoAtivo]}>{rotulo}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.explicacao}>{atual.explicacao}</Text>
 
       <View style={styles.palco}>
         <AsyncBoundary
@@ -87,11 +77,10 @@ export default function DemoFeedbackScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: PRIMARY },
 
-  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 18 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 14 },
 
-  abas: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 12 },
+  abas: { flexDirection: 'row', gap: 8 },
   aba: {
     flex: 1,
     borderWidth: 1.5,
@@ -103,14 +92,6 @@ const styles = StyleSheet.create({
   abaAtiva: { backgroundColor: '#fff', borderColor: '#fff' },
   abaTexto: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.8)' },
   abaTextoAtivo: { color: PRIMARY },
-
-  explicacao: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    textAlign: 'center',
-  },
 
   palco: { flex: 1, backgroundColor: '#f4f6f9' },
   lista: { padding: 20, gap: 12 },
