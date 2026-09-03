@@ -10,8 +10,7 @@ import {
   View,
   Platform,
 } from 'react-native';
-
-const PRIMARY = '#006ecf';
+import { useColors } from '@/src/theme';
 
 interface CustomButtonProps {
   title: string;
@@ -32,39 +31,41 @@ export default function CustomButton({
   style,
   textStyle,
 }: CustomButtonProps) {
+  const colors = useColors();
+  const buttonStyles = getStyles(colors);
   const isButtonDisabled = disabled || loading;
 
   return (
     <TouchableOpacity
-      style={[styles.button, style, isButtonDisabled && styles.buttonDisabled]}
+      style={[buttonStyles.button, style, isButtonDisabled && buttonStyles.buttonDisabled]}
       onPress={onPress}
       disabled={isButtonDisabled}
       activeOpacity={0.85}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color={colors.white} />
       ) : (
-        <View style={styles.content}>
+        <View style={buttonStyles.content}>
           {icon ? (
-            typeof icon === 'string' 
-              ? <Text style={styles.icon}>{icon}</Text> 
+            typeof icon === 'string'
+              ? <Text style={buttonStyles.icon}>{icon}</Text>
               : icon
           ) : null}
-          <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+          <Text style={[buttonStyles.buttonText, textStyle]}>{title}</Text>
         </View>
       )}
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   button: {
-    backgroundColor: PRIMARY,
+    backgroundColor: colors.primary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: PRIMARY,
+    shadowColor: colors.primary,
     shadowOpacity: 0.35,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -74,5 +75,5 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.6 },
   content: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   icon: { fontSize: 22 },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: Platform.OS === 'ios' ? 16 : 22 },
+  buttonText: { color: colors.white, fontFamily: 'Inter-Bold', fontSize: Platform.OS === 'ios' ? 16 : 22 },
 });

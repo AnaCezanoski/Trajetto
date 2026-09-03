@@ -14,6 +14,7 @@ import {
   Pressable,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useColors } from '@/src/theme';
 
 type InputType = 'text' | 'password' | 'email' | 'numeric' | 'phone-pad' | 'code';
 
@@ -43,9 +44,6 @@ interface CustomInputProps {
   onFocus?: () => void;
 }
 
-const PRIMARY = '#023665';
-const PLACEHOLDER_COLOR = '#aab';
-
 export default function CustomInput({
   label,
   error,
@@ -71,6 +69,8 @@ export default function CustomInput({
   onBlur,
   onFocus,
 }: CustomInputProps) {
+  const colors = useColors();
+  const inputStyles = getStyles(colors);
   const [showPassword, setShowPassword] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -87,11 +87,11 @@ export default function CustomInput({
     const codeArray = value.split('');
 
     return (
-      <View style={[styles.fieldContainer, style]}>
-        {label && <Text style={styles.label}>{label}</Text>}
-        <Pressable 
-          onPress={() => inputRef.current?.focus()} 
-          style={styles.codeContainer}
+      <View style={[inputStyles.fieldContainer, style]}>
+        {label && <Text style={inputStyles.label}>{label}</Text>}
+        <Pressable
+          onPress={() => inputRef.current?.focus()}
+          style={inputStyles.codeContainer}
         >
           {cells.map((_, i) => {
             const isFocused = value.length === i;
@@ -100,18 +100,18 @@ export default function CustomInput({
                 key={i}
                 pointerEvents="none"
                 style={[
-                  styles.codeCell,
-                  isFocused && styles.codeCellFocused,
-                  error ? styles.inputError : null,
+                  inputStyles.codeCell,
+                  isFocused && inputStyles.codeCellFocused,
+                  error ? inputStyles.inputError : null,
                 ]}
               >
-                <Text style={styles.codeText}>{codeArray[i] || ''}</Text>
+                <Text style={inputStyles.codeText}>{codeArray[i] || ''}</Text>
               </View>
             );
           })}
           <TextInput
             ref={inputRef}
-            style={styles.hiddenInput}
+            style={inputStyles.hiddenInput}
             value={value}
             onChangeText={(t) => onChangeText(t.replace(/\D/g, '').slice(0, 6))}
             keyboardType="numeric"
@@ -123,20 +123,20 @@ export default function CustomInput({
             caretHidden
           />
         </Pressable>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={inputStyles.errorText}>{error}</Text> : null}
       </View>
     );
   }
 
   return (
-    <View style={[styles.fieldContainer, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[styles.inputWrapper, error ? styles.inputError : null, inputWrapperStyle]}>
+    <View style={[inputStyles.fieldContainer, style]}>
+      {label && <Text style={inputStyles.label}>{label}</Text>}
+      <View style={[inputStyles.inputWrapper, error ? inputStyles.inputError : null, inputWrapperStyle]}>
         {leftIcon}
         <TextInput
-          style={[styles.input, inputStyle, isPassword && styles.passwordInput]}
+          style={[inputStyles.input, inputStyle, isPassword && inputStyles.passwordInput]}
           placeholder={placeholder}
-          placeholderTextColor={PLACEHOLDER_COLOR}
+          placeholderTextColor={colors.placeholder}
           value={value}
           onChangeText={onChangeText}
           keyboardType={currentKeyboardType}
@@ -155,42 +155,42 @@ export default function CustomInput({
         />
         {rightElement}
         {isPassword && (
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={inputStyles.eyeBtn} activeOpacity={0.7}>
             {showPassword ? (
               <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <Path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke={PLACEHOLDER_COLOR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <Path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke={PLACEHOLDER_COLOR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <Path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke={colors.placeholder} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <Path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke={colors.placeholder} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </Svg>
             ) : (
               <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12A18.45 18.45 0 0 1 5.06 5.06M9.9 4.24A9.12 9.12 0 0 1 12 4C19 4 23 12 23 12A18.5 18.5 0 0 1 20.71 15.68M14.12 14.12A3 3 0 1 1 9.88 9.88" stroke={PLACEHOLDER_COLOR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <Path d="M1 1L23 23" stroke={PLACEHOLDER_COLOR} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12A18.45 18.45 0 0 1 5.06 5.06M9.9 4.24A9.12 9.12 0 0 1 12 4C19 4 23 12 23 12A18.5 18.5 0 0 1 20.71 15.68M14.12 14.12A3 3 0 1 1 9.88 9.88" stroke={colors.placeholder} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <Path d="M1 1L23 23" stroke={colors.placeholder} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </Svg>
             )}
           </TouchableOpacity>
         )}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={inputStyles.errorText}>{error}</Text> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   fieldContainer: {
     marginBottom: 16,
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#4a5568',
+    fontFamily: 'Inter-Medium',
+    color: colors.label,
     marginBottom: 6,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fb',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 14,
   },
@@ -198,16 +198,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#1a1a1a',
+    color: colors.text,
   },
   passwordInput: {
-    paddingRight: 10, // Adjust padding for eye icon
+    paddingRight: 10,
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: colors.error,
   },
   errorText: {
-    color: '#EF4444',
+    color: colors.error,
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
@@ -225,21 +225,21 @@ const styles = StyleSheet.create({
     width: 44,
     height: 54,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
     borderRadius: 12,
-    backgroundColor: '#f8f9fb',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   codeCellFocused: {
-    borderColor: PRIMARY,
-    backgroundColor: '#fff',
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.white,
     borderWidth: 2,
   },
   codeText: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontFamily: 'Inter-Bold',
+    color: colors.text,
   },
   hiddenInput: {
     position: 'absolute',

@@ -32,9 +32,8 @@ module.exports = defineConfig([
       'components/**/*.{ts,tsx}',
       'context/**/*.{ts,tsx}',
       'hooks/**/*.{ts,tsx}',
-      'navigation/**/*.{ts,tsx}',
+      'src/**/*.{ts,tsx}',
       'tests/**/*.{ts,tsx}',
-      'App.tsx',
     ],
     rules: {
       'no-restricted-imports': ['error', CAMADA_DE_SERVICOS],

@@ -1,0 +1,40 @@
+import { StyleSheet } from 'react-native';
+import { AppColors } from '@/src/theme';
+
+export const styles = (colors: AppColors) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: colors.backgroundMuted },
+    scrollView: { flex: 1, backgroundColor: colors.white },
+    headerWrapper: { paddingHorizontal: 24, paddingBottom: 40, backgroundColor: colors.primary },
+    content: { paddingBottom: 48 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 70, marginBottom: 20, position: 'relative', height: 44 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+    headerBackBtn: { padding: 8, marginLeft: -12 },
+    headerText: { fontSize: 18, fontFamily: 'Inter-Bold', color: colors.white, marginLeft: -4 },
+    headerCenter: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+    logoBadge: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 10, padding: 5 },
+    card: {
+      flex: 1,
+      backgroundColor: colors.white,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+      marginTop: -32,
+      padding: 28,
+      paddingBottom: 40,
+    },
+    cardTitle: { fontSize: 18, fontFamily: 'Inter-Bold', color: colors.text, marginBottom: 15 },
+    row: { flexDirection: 'row', gap: 12 },
+    field: { flex: 1, marginBottom: 16 },
+    label: { fontSize: 12, fontFamily: 'Inter-Bold', color: colors.gray500, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+    inputOk: { borderColor: colors.success },
+    inputError: { borderColor: colors.error },
+    errorText: { color: colors.error, fontSize: 11, marginTop: 4, marginLeft: 2 },
+    dropdownTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 11 },
+    dropdownValue: { fontSize: 15, color: colors.text, flex: 1 },
+    dropdownPlaceholder: { fontSize: 15, color: colors.gray400, flex: 1 },
+    dropdownChevron: { fontSize: 10, color: colors.gray400, marginLeft: 8 },
+    button: { marginTop: 20, marginBottom: 16 },
+    loginLink: { alignItems: 'center' },
+    loginLinkText: { fontSize: 14, color: colors.gray500 },
+    loginLinkBold: { color: colors.primary, fontFamily: 'Inter-Bold' },
+  });
